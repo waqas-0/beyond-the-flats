@@ -2,7 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
-  const { phone } = await request.json();
+  let phone: unknown;
+  try {
+    ({ phone } = await request.json());
+  } catch {
+    return Response.json({ error: "Invalid request body." }, { status: 400 });
+  }
 
   if (!phone || typeof phone !== "string") {
     return Response.json({ error: "Phone number is required." }, { status: 400 });
@@ -26,7 +31,10 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error("[send-otp]", error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    // Provider rejects bad/unreachable numbers — that's a client input error,
+    // not a server fault. Surface the provider message with a 4xx.
+    const status = error.status && error.status >= 400 && error.status < 500 ? error.status : 422;
+    return Response.json({ error: error.message }, { status });
   }
 
   return Response.json({ phone: normalised });

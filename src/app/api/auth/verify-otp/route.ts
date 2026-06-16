@@ -2,9 +2,15 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {
-  const { phone, token } = await request.json();
+  let phone: unknown;
+  let token: unknown;
+  try {
+    ({ phone, token } = await request.json());
+  } catch {
+    return Response.json({ error: "Invalid request body." }, { status: 400 });
+  }
 
-  if (!phone || !token) {
+  if (!phone || !token || typeof phone !== "string" || typeof token !== "string") {
     return Response.json({ error: "Phone and token are required." }, { status: 400 });
   }
 

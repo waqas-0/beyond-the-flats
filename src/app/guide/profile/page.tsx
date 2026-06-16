@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,22 +8,51 @@ import {
   UserCircle,
   ChevronRight,
   BadgeCheck,
+  Clock,
+  CircleAlert,
   Download,
   Share2,
   LogOut,
-  CheckCircle2,
+  User,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/Button";
 import { QrCode } from "@/components/ui/QrCode";
 import { clsx } from "@/lib/clsx";
-import { guideUser } from "@/lib/data";
+import type { Guide } from "@/lib/supabase/types";
 
 export default function GuideProfilePage() {
   const router = useRouter();
   const [notify, setNotify] = useState(true);
   const [signOut, setSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [guide, setGuide] = useState<Guide | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/guide/profile")
+      .then((r) => r.json())
+      .then((json) => {
+        if (active) setGuide(json.guide ?? null);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function confirmSignOut() {
+    setSigningOut(true);
+    await fetch("/api/auth/signout", { method: "POST" });
+    router.push("/guide/signin");
+  }
+
+  const status = guide?.verification_status ?? "pending";
 
   return (
     <AppShell homeIndicator={false}>
@@ -39,20 +67,42 @@ export default function GuideProfilePage() {
         {/* Identity */}
         <div className="mt-3 flex flex-col items-center">
           <div className="relative">
-            <Image
-              src={guideUser.avatar}
-              alt={guideUser.name}
-              width={88}
-              height={88}
-              className="h-22 w-22 rounded-full object-cover"
-            />
-            <span className="absolute -bottom-1 right-0 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white">
-              <BadgeCheck size={12} /> Verified
-            </span>
+            {guide?.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={guide.avatar_url}
+                alt={guide.full_name ?? "Guide"}
+                className="h-22 w-22 rounded-full object-cover"
+                width={88}
+                height={88}
+              />
+            ) : (
+              <div className="flex h-22 w-22 items-center justify-center rounded-full bg-card">
+                <User size={40} className="text-muted" strokeWidth={1.6} />
+              </div>
+            )}
+            <StatusPill status={status} />
           </div>
-          <h2 className="mt-3 text-2xl font-bold text-ink">{guideUser.name}</h2>
-          <p className="text-sm text-muted">{guideUser.email}</p>
+          <h2 className="mt-3 text-2xl font-bold text-ink">
+            {loading ? "…" : guide?.full_name ?? "Your Profile"}
+          </h2>
+          <p className="text-sm text-muted">{guide?.phone ?? ""}</p>
         </div>
+
+        {/* About — saved bio / coverage / specialties */}
+        {(guide?.bio || guide?.islands?.length || guide?.specialties?.length) && (
+          <div className="mt-5 rounded-2xl bg-card p-4">
+            {guide?.bio && (
+              <p className="text-sm leading-relaxed text-ink">{guide.bio}</p>
+            )}
+            {!!guide?.islands?.length && (
+              <TagRow label="🏝️ Islands" items={guide.islands} />
+            )}
+            {!!guide?.specialties?.length && (
+              <TagRow label="🎣 Specialties" items={guide.specialties} />
+            )}
+          </div>
+        )}
 
         {/* Settings */}
         <p className="mt-6 text-xs font-semibold uppercase tracking-wider text-muted">
@@ -149,15 +199,56 @@ export default function GuideProfilePage() {
                 No, Discard
               </button>
               <button
-                onClick={() => router.push("/")}
-                className="flex-1 rounded-full bg-danger py-3 text-base font-semibold text-white"
+                onClick={confirmSignOut}
+                disabled={signingOut}
+                className="flex-1 rounded-full bg-danger py-3 text-base font-semibold text-white disabled:opacity-60"
               >
-                Yes, Sign Out
+                {signingOut ? "Signing out…" : "Yes, Sign Out"}
               </button>
             </div>
           </div>
         </div>
       )}
     </AppShell>
+  );
+}
+
+function StatusPill({ status }: { status: Guide["verification_status"] }) {
+  if (status === "approved") {
+    return (
+      <span className="absolute -bottom-1 right-0 flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold text-white">
+        <BadgeCheck size={12} /> Verified
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="absolute -bottom-1 right-0 flex items-center gap-1 rounded-full bg-danger px-2 py-0.5 text-[10px] font-semibold text-white">
+        <CircleAlert size={12} /> Rejected
+      </span>
+    );
+  }
+  return (
+    <span className="absolute -bottom-1 right-0 flex items-center gap-1 rounded-full bg-navy px-2 py-0.5 text-[10px] font-semibold text-white">
+      <Clock size={12} /> Pending
+    </span>
+  );
+}
+
+function TagRow({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div className="mt-3">
+      <p className="text-xs font-semibold text-muted">{label}</p>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {items.map((t) => (
+          <span
+            key={t}
+            className="rounded-full border border-line bg-bg px-2.5 py-1 text-xs font-medium text-ink"
+          >
+            {t}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }

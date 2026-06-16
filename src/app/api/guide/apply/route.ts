@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
   const bio = formData.get("bio") as string;
   const islands = JSON.parse((formData.get("islands") as string) ?? "[]") as string[];
   const specialties = JSON.parse((formData.get("specialties") as string) ?? "[]") as string[];
+  const boatType = (formData.get("boat_type") as string | null) || null;
   const yearsExperience = formData.get("years_experience")
     ? Number(formData.get("years_experience"))
     : null;
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
     avatar_url: avatarUrl,
     islands,
     specialties,
+    boat_type: boatType,
     years_experience: yearsExperience,
     license_url: licenseUrl,
     conservation_pledge: conservationPledge,

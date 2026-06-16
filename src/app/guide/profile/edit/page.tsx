@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, Check } from "lucide-react";
+import { ArrowLeft, Pencil, Check, User } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { clsx } from "@/lib/clsx";
-import { guideUser } from "@/lib/data";
+import type { Guide } from "@/lib/supabase/types";
 
 const ISLANDS = ["Grand Bahama", "Abaco", "Andros", "Eleuthera", "Exuma"];
 const SPECIALTIES = [
@@ -19,16 +18,78 @@ const SPECIALTIES = [
 
 export default function AccountSettingsPage() {
   const router = useRouter();
-  const [name, setName] = useState(guideUser.name);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [name, setName] = useState("");
   const [bio, setBio] = useState("");
-  const [islands, setIslands] = useState<string[]>(["Abaco"]);
+  const [boatType, setBoatType] = useState("");
+  const [years, setYears] = useState("");
+  const [islands, setIslands] = useState<string[]>([]);
   const [specialties, setSpecialties] = useState<string[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/guide/profile")
+      .then((r) => r.json())
+      .then(({ guide }: { guide: Guide | null }) => {
+        if (!active || !guide) return;
+        setName(guide.full_name ?? "");
+        setBio(guide.bio ?? "");
+        setBoatType(guide.boat_type ?? "");
+        setYears(guide.years_experience != null ? String(guide.years_experience) : "");
+        setIslands(guide.islands ?? []);
+        setSpecialties(guide.specialties ?? []);
+        setAvatarUrl(guide.avatar_url);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const toggle = (
     list: string[],
     set: (v: string[]) => void,
     v: string,
   ) => set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
+
+  const avatarPreview = avatarFile ? URL.createObjectURL(avatarFile) : avatarUrl;
+
+  async function save() {
+    if (!name.trim()) {
+      setError("Full name is required.");
+      return;
+    }
+    setError(null);
+    setSaving(true);
+
+    const fd = new FormData();
+    fd.append("full_name", name);
+    fd.append("bio", bio);
+    fd.append("boat_type", boatType);
+    if (years.trim()) fd.append("years_experience", years.trim());
+    fd.append("islands", JSON.stringify(islands));
+    fd.append("specialties", JSON.stringify(specialties));
+    if (avatarFile) fd.append("avatar", avatarFile);
+
+    const res = await fetch("/api/guide/profile", { method: "PATCH", body: fd });
+    const json = await res.json();
+    setSaving(false);
+
+    if (!res.ok) {
+      setError(json.error ?? "Could not save changes. Please try again.");
+      return;
+    }
+
+    router.push("/guide/profile");
+  }
 
   return (
     <AppShell>
@@ -44,18 +105,29 @@ export default function AccountSettingsPage() {
         </header>
 
         <div className="mt-6 flex justify-center">
-          <div className="relative">
-            <Image
-              src={guideUser.avatar}
-              alt={guideUser.name}
-              width={88}
-              height={88}
-              className="h-22 w-22 rounded-full object-cover"
-            />
+          <label className="relative cursor-pointer">
+            <div className="flex h-22 w-22 items-center justify-center overflow-hidden rounded-full bg-card">
+              {avatarPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarPreview}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <User size={40} className="text-muted" strokeWidth={1.6} />
+              )}
+            </div>
             <span className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-bg bg-navy text-white">
               <Pencil size={13} />
             </span>
-          </div>
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
         </div>
 
         <label className="mt-6 text-sm font-semibold text-ink">
@@ -64,6 +136,7 @@ export default function AccountSettingsPage() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
+          disabled={loading}
           className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none focus:border-brand"
         />
 
@@ -79,6 +152,28 @@ export default function AccountSettingsPage() {
           placeholder="Tell us about your years on the water, your boat, and what makes your trips unique..."
           className="mt-2 w-full resize-none rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
         />
+
+        <div className="mt-5 flex gap-3">
+          <div className="flex-1">
+            <label className="text-sm font-semibold text-ink">Years Guiding</label>
+            <input
+              value={years}
+              inputMode="numeric"
+              onChange={(e) => setYears(e.target.value.replace(/\D/g, "").slice(0, 2))}
+              placeholder="15"
+              className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="text-sm font-semibold text-ink">Boat Type</label>
+            <input
+              value={boatType}
+              onChange={(e) => setBoatType(e.target.value)}
+              placeholder="18ft Hells Bay skiff"
+              className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
+            />
+          </div>
+        </div>
 
         <ChipSection title="🏝️ Island Coverage">
           {ISLANDS.map((v) => (
@@ -102,21 +197,18 @@ export default function AccountSettingsPage() {
           ))}
         </ChipSection>
 
-        {/* License */}
-        <h3 className="mt-6 text-base font-bold text-ink">License</h3>
-        <div className="mt-3 flex items-center gap-3 rounded-xl border border-dashed border-faint p-3">
-          <div className="h-14 w-16 shrink-0 rounded-md bg-card" />
-          <div>
-            <p className="text-base font-semibold text-ink">License_2026</p>
-            <p className="text-sm text-muted">250kb</p>
-          </div>
-        </div>
+        {error && (
+          <p className="mt-6 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
+            {error}
+          </p>
+        )}
 
         <button
-          onClick={() => router.push("/guide/profile")}
-          className="mt-8 h-14 w-full rounded-full bg-navy text-[15px] font-semibold text-white"
+          onClick={save}
+          disabled={saving || loading}
+          className="mt-8 h-14 w-full rounded-full bg-navy text-[15px] font-semibold text-white disabled:opacity-60"
         >
-          Save Changes
+          {saving ? "Saving…" : "Save Changes"}
         </button>
       </div>
     </AppShell>

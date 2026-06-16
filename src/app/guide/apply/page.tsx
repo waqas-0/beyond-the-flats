@@ -42,6 +42,8 @@ export default function GuideApplyPage() {
   // Form state collected across steps
   const [fullName, setFullName] = useState("");
   const [bio, setBio] = useState("");
+  const [boatType, setBoatType] = useState("");
+  const [years, setYears] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -62,6 +64,8 @@ export default function GuideApplyPage() {
     const fd = new FormData();
     fd.append("full_name", fullName);
     fd.append("bio", bio);
+    fd.append("boat_type", boatType);
+    if (years.trim()) fd.append("years_experience", years.trim());
     fd.append("islands", JSON.stringify(islands));
     fd.append("specialties", JSON.stringify(specialties));
     fd.append("conservation_pledge", String(pledged));
@@ -113,6 +117,10 @@ export default function GuideApplyPage() {
             setFullName={setFullName}
             bio={bio}
             setBio={setBio}
+            boatType={boatType}
+            setBoatType={setBoatType}
+            years={years}
+            setYears={setYears}
             avatarFile={avatarFile}
             setAvatarFile={setAvatarFile}
             islands={islands}
@@ -160,6 +168,10 @@ function StepOne({
   setFullName,
   bio,
   setBio,
+  boatType,
+  setBoatType,
+  years,
+  setYears,
   avatarFile,
   setAvatarFile,
   islands,
@@ -172,6 +184,10 @@ function StepOne({
   setFullName: (v: string) => void;
   bio: string;
   setBio: (v: string) => void;
+  boatType: string;
+  setBoatType: (v: string) => void;
+  years: string;
+  setYears: (v: string) => void;
   avatarFile: File | null;
   setAvatarFile: (f: File | null) => void;
   islands: string[];
@@ -237,6 +253,28 @@ function StepOne({
           placeholder="Tell us about your years on the water, your boat, and what makes your trips unique..."
           className="mt-2 w-full resize-none rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
         />
+      </div>
+
+      <div className="mt-5 flex gap-3">
+        <div className="flex-1">
+          <label className="text-sm font-semibold text-ink">Years Guiding</label>
+          <input
+            value={years}
+            inputMode="numeric"
+            onChange={(e) => setYears(e.target.value.replace(/\D/g, "").slice(0, 2))}
+            placeholder="15"
+            className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="text-sm font-semibold text-ink">Boat Type</label>
+          <input
+            value={boatType}
+            onChange={(e) => setBoatType(e.target.value)}
+            placeholder="18ft skiff"
+            className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
+          />
+        </div>
       </div>
 
       <ChipGroup title="🏝️ Island Coverage">
