@@ -33,9 +33,36 @@ export default function OtpPage() {
   }, [seconds]);
 
   function setDigit(i: number, v: string) {
-    const d = v.replace(/\D/g, "").slice(-1);
+    // Multiple digits (e.g. autofill or paste landing on one box) → distribute
+    const digits = v.replace(/\D/g, "");
+    if (digits.length > 1) {
+      fillFrom(i, digits);
+      return;
+    }
+    const d = digits.slice(-1);
     setCode((c) => c.map((x, idx) => (idx === i ? d : x)));
     if (d && i < 5) inputs.current[i + 1]?.focus();
+  }
+
+  // Fill boxes starting at index `start` with `digits`, then focus the next empty box.
+  function fillFrom(start: number, digits: string) {
+    const clean = digits.replace(/\D/g, "").slice(0, 6 - start);
+    if (!clean) return;
+    setCode((c) =>
+      c.map((x, idx) =>
+        idx >= start && idx < start + clean.length ? clean[idx - start] : x,
+      ),
+    );
+    const next = Math.min(start + clean.length, 5);
+    inputs.current[next]?.focus();
+  }
+
+  function handlePaste(i: number, e: React.ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text");
+    if (/\d/.test(text)) {
+      e.preventDefault();
+      fillFrom(i, text);
+    }
   }
 
   async function verify() {
@@ -116,8 +143,10 @@ export default function OtpPage() {
               }}
               value={d}
               inputMode="numeric"
-              maxLength={1}
+              autoComplete="one-time-code"
+              maxLength={6}
               onChange={(e) => setDigit(i, e.target.value)}
+              onPaste={(e) => handlePaste(i, e)}
               onKeyDown={(e) => {
                 if (e.key === "Backspace" && !code[i] && i > 0)
                   inputs.current[i - 1]?.focus();
