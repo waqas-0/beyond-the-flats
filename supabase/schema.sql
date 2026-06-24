@@ -28,15 +28,26 @@ create table public.guides (
 create table public.trips (
   id             uuid        primary key default gen_random_uuid(),
   guide_id       uuid        not null references public.guides(id) on delete cascade,
+  title          text,
   client_name    text,
+  anglers        int         not null default 1,
+  permit_ref     text,
   start_time     timestamptz not null default now(),
   end_time       timestamptz,
   location_note  text,
+  notes          text,
   gps_lat        numeric,
   gps_lng        numeric,
   photo_url      text,
   created_at     timestamptz not null default now()
 );
+
+-- Week 4 migration (idempotent) — for databases created before the trip
+-- logger fields existed. Safe to run repeatedly; no-ops on fresh installs.
+alter table public.trips add column if not exists title      text;
+alter table public.trips add column if not exists anglers    int not null default 1;
+alter table public.trips add column if not exists permit_ref text;
+alter table public.trips add column if not exists notes      text;
 
 -- ── catches ───────────────────────────────────────────────────
 -- Multiple catch entries per trip (species counter)
