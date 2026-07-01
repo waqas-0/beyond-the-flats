@@ -1,11 +1,19 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { LogOut, ShieldCheck } from "lucide-react";
+import { clsx } from "@/lib/clsx";
+
+const NAV = [
+  { href: "/admin", label: "Applications" },
+  { href: "/admin/analytics", label: "Analytics" },
+  { href: "/admin/reviews", label: "Reviews" },
+];
 
 export function AdminHeader({ email }: { email: string }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   async function logout() {
     await fetch("/api/auth/signout", { method: "POST" });
@@ -30,6 +38,28 @@ export function AdminHeader({ email }: { email: string }) {
           </button>
         </div>
       </div>
+      <nav className="mx-auto flex max-w-3xl gap-1 px-3 pb-1">
+        {NAV.map((item) => {
+          const active =
+            item.href === "/admin"
+              ? pathname === "/admin"
+              : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={clsx(
+                "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                active
+                  ? "bg-navy/5 text-navy"
+                  : "text-muted hover:bg-card hover:text-ink",
+              )}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
     </header>
   );
 }
