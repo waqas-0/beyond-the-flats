@@ -222,6 +222,15 @@ grant select on public.catches  to anon;
 grant select on public.reviews  to anon;
 grant insert on public.qr_scans to anon;
 
+-- Service role bypasses RLS for trusted server-side work (admin panel reads,
+-- approve/reject, storage uploads). It needs table privileges EXPLICITLY in
+-- this project — without these, every createServiceClient() query gets
+-- "permission denied" and the admin login returns 403.
+grant usage on schema public to service_role;
+grant all on all tables    in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+grant all on all functions in schema public to service_role;
+
 
 
 -- drop table if exists public.catches   cascade;
