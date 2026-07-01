@@ -380,7 +380,6 @@ function StepTwo({
   );
 }
 
-/* ---------- Step 3 ---------- */
 function StepThree({
   pledged,
   setPledged,

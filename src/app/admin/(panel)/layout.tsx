@@ -15,7 +15,9 @@ export default async function AdminPanelLayout({
   return (
     <div className="min-h-screen bg-bg">
       <AdminHeader email={admin.email} />
-      <main className="mx-auto max-w-3xl px-5 pb-16 pt-6">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 pb-20 pt-6 sm:px-6 lg:px-8">
+        {children}
+      </main>
     </div>
   );
 }
