@@ -68,19 +68,11 @@ export default async function AdminDashboardPage() {
 
       {/* Recent applications */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-white">
-        <div className="flex items-center justify-between gap-3 p-5">
-          <div>
-            <h2 className="text-lg font-bold text-ink">Recent Applications</h2>
-            <p className="text-sm text-muted">
-              Review and manage incoming guide registrations.
-            </p>
-          </div>
-          <Link
-            href="/admin/applications"
-            className="shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy/90"
-          >
-            View All
-          </Link>
+        <div className="p-5">
+          <h2 className="text-lg font-bold text-ink">Recent Applications</h2>
+          <p className="text-sm text-muted">
+            Review and manage incoming guide registrations.
+          </p>
         </div>
 
         <div className="overflow-x-auto">
