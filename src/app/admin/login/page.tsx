@@ -32,12 +32,12 @@ export default function AdminLoginPage() {
 
   return (
     <main className="min-h-screen bg-bg lg:grid lg:grid-cols-2">
-      {/* Coastal photo — desktop only */}
+      {/* Coastal photo — desktop only (Figma asset) */}
       <div
-        className="hidden bg-navy bg-cover bg-center lg:block"
-        style={{ backgroundImage: "url('/photos/trip-deep-creek.png')" }}
+        className="hidden bg-cover bg-center lg:block"
+        style={{ backgroundImage: "url('/brand/admin-login-bg.jpg')" }}
       >
-        <div className="h-full w-full bg-navy/25" />
+        <div className="h-full w-full bg-black/40" />
       </div>
 
       {/* Form */}
@@ -62,7 +62,7 @@ export default function AdminLoginPage() {
                 placeholder="team@beyondtheflats.com"
                 autoComplete="email"
                 required
-                className="mt-1.5 w-full rounded-full border border-line bg-card px-5 py-3 text-sm text-ink outline-none focus:border-brand placeholder:text-faint"
+                className="mt-1.5 w-full rounded-2xl border border-line bg-card px-5 py-3.5 text-sm text-ink outline-none focus:border-brand placeholder:text-faint"
               />
             </div>
             <div>
@@ -74,7 +74,7 @@ export default function AdminLoginPage() {
                 placeholder="••••••••"
                 autoComplete="current-password"
                 required
-                className="mt-1.5 w-full rounded-full border border-line bg-card px-5 py-3 text-sm text-ink outline-none focus:border-brand placeholder:text-faint"
+                className="mt-1.5 w-full rounded-2xl border border-line bg-card px-5 py-3.5 text-sm text-ink outline-none focus:border-brand placeholder:text-faint"
               />
             </div>
 
@@ -94,7 +94,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-full bg-navy py-3.5 text-sm font-semibold text-white transition-colors hover:bg-navy/90 disabled:opacity-60"
+              className="w-full rounded-2xl bg-navy py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-navy/90 disabled:opacity-60"
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
