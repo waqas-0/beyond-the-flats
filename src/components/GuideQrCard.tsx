@@ -13,7 +13,8 @@ export function GuideQrCard({ guideId, name }: { guideId: string; name: string }
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const url = `${window.location.origin}/g/${guideId}?src=qr`;
+    const base = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const url = `${base}/g/${guideId}?src=qr`;
     QRCode.toDataURL(url, {
       width: 512,
       margin: 1,
@@ -33,7 +34,8 @@ export function GuideQrCard({ guideId, name }: { guideId: string; name: string }
 
   function downloadPdf() {
     if (!dataUrl) return;
-    const url = `${window.location.origin}/g/${guideId}?src=qr`;
+    const base = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const url = `${base}/g/${guideId}?src=qr`;
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
     const w = pdf.internal.pageSize.getWidth();
 

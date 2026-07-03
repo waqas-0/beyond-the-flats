@@ -1,4 +1,8 @@
-const CACHE = "btf-v1";
+const CACHE = "btf-v2";
+
+// Authenticated, per-user HTML must never be cached in the shared bucket —
+// caching it would leak one user's dashboard/admin page to the next.
+const PRIVATE_PREFIXES = ["/guide", "/admin"];
 
 // Static shell assets to precache
 const PRECACHE = [
@@ -48,8 +52,15 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Navigation: network-first, fallback to cache, then offline page
+  // Navigation
   if (request.mode === "navigate") {
+    // Authenticated routes: network-only, never cached. On failure fall back to
+    // the generic offline page — NOT a cached private HTML response.
+    if (PRIVATE_PREFIXES.some((p) => url.pathname.startsWith(p))) {
+      e.respondWith(fetch(request).catch(() => caches.match("/offline")));
+      return;
+    }
+    // Public routes: network-first, cache for offline, then offline page.
     e.respondWith(
       fetch(request)
         .then((res) => {

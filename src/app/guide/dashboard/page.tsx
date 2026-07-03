@@ -40,6 +40,7 @@ export default async function GuideDashboardPage() {
     .eq("guide_id", user.id)
     .order("start_time", { ascending: false });
   const trips = tripRows ?? [];
+  const completedTrips = trips.filter((t) => t.end_time).length;
 
   let fishReleased = 0;
   if (trips.length) {
@@ -99,7 +100,7 @@ export default async function GuideDashboardPage() {
           <StatCard
             icon={<CalendarDays size={18} className="text-navy" />}
             iconBg="bg-navy/10"
-            value={String(trips.length)}
+            value={String(completedTrips)}
             label="Trips Completed"
           />
           <div className="grid grid-cols-2 gap-4">

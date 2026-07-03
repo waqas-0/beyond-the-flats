@@ -1,9 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BadgeCheck, CircleAlert, Clock, ExternalLink, FileText, User } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  MapPin,
+  Calendar,
+  CircleCheck,
+  FileText,
+  ExternalLink,
+} from "lucide-react";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Guide } from "@/lib/supabase/types";
 import { ReviewActions } from "../../ReviewActions";
+import { GuideQrCard } from "@/components/GuideQrCard";
+import { StatusPill, Chip } from "../../ui";
 
 export const dynamic = "force-dynamic";
 
@@ -20,156 +30,199 @@ export default async function AdminGuideDetailPage({
     .select("*")
     .eq("id", id)
     .maybeSingle();
-
   if (!guide) notFound();
   const g = guide as Guide;
 
-  // Licence lives in a private bucket — mint a short-lived signed URL to view it.
   let licenseUrl: string | null = null;
+  let licenseName: string | null = null;
   if (g.license_url) {
     const { data } = await service.storage
       .from("guide-licenses")
       .createSignedUrl(g.license_url, 600);
     licenseUrl = data?.signedUrl ?? null;
+    licenseName = g.license_url.split("/").pop() ?? "licence";
   }
 
   const submitted = new Date(g.created_at).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
+    month: "long",
     day: "numeric",
+    year: "numeric",
   });
 
   return (
     <div>
-      <Link
-        href="/admin"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink"
-      >
-        <ArrowLeft size={16} /> Back to applications
-      </Link>
-
-      {/* Identity */}
-      <div className="mt-4 flex items-center gap-4 rounded-[20px] bg-white p-5">
-        {g.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={g.avatar_url}
-            alt={g.full_name ?? "Guide"}
-            className="h-16 w-16 shrink-0 rounded-full object-cover"
-            width={64}
-            height={64}
-          />
-        ) : (
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-card">
-            <User size={30} className="text-muted" strokeWidth={1.6} />
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-bold text-ink">
-            {g.full_name ?? "Unnamed guide"}
-          </h1>
-          <p className="text-sm text-muted">{g.phone}</p>
-          <p className="mt-0.5 text-xs text-muted">Applied {submitted}</p>
-        </div>
-        <StatusBadge status={g.verification_status} />
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-sm text-muted">
+        <Link href="/admin/applications" className="hover:text-ink">
+          Guide Applications
+        </Link>
+        <ChevronRight size={14} />
+        <span className="font-semibold text-ink">Guide Verification</span>
       </div>
 
-      {/* Profile details */}
-      <section className="mt-4 rounded-[20px] bg-white p-5">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-          Profile
-        </h2>
-        {g.bio && <p className="mt-3 text-sm leading-relaxed text-ink">{g.bio}</p>}
-        <dl className="mt-3 grid grid-cols-2 gap-y-3 text-sm">
-          <Field label="Boat type" value={g.boat_type} />
-          <Field
-            label="Years guiding"
-            value={g.years_experience != null ? String(g.years_experience) : null}
-          />
-          <Field label="Islands" value={g.islands.join(", ") || null} />
-          <Field label="Specialties" value={g.specialties.join(", ") || null} />
-        </dl>
-        <p className="mt-3 text-sm">
-          <span className="text-muted">Conservation pledge: </span>
-          <span className={g.conservation_pledge ? "font-semibold text-brand" : "text-danger"}>
-            {g.conservation_pledge ? "Signed ✓" : "Not signed"}
-          </span>
-        </p>
-      </section>
+      <div className="mt-4 flex items-center gap-3">
+        <Link href="/admin/applications" className="text-ink">
+          <ArrowLeft size={22} />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-ink">Guide Verification Review</h1>
+          <p className="text-sm text-muted">
+            Review submitted information and uploaded licence documents.
+          </p>
+        </div>
+      </div>
 
-      {/* Licence */}
-      <section className="mt-4 rounded-[20px] bg-white p-5">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-          Fishing licence
-        </h2>
-        {licenseUrl ? (
-          <div className="mt-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={licenseUrl}
-              alt="Guide fishing licence"
-              className="max-h-96 w-full rounded-2xl border border-line object-contain"
-            />
-            <a
-              href={licenseUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+      <div className="mt-6 grid gap-5 lg:grid-cols-2 lg:items-start">
+        {/* Profile card */}
+        <div className="overflow-hidden rounded-2xl border border-line bg-white">
+          <div className="h-24 bg-navy" />
+          <div className="px-5 pb-5">
+            <div className="-mt-12 flex items-start justify-between">
+              {g.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={g.avatar_url}
+                  alt={g.full_name ?? "Guide"}
+                  className="h-20 w-20 rounded-2xl border-4 border-white object-cover"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-white bg-card text-2xl font-bold text-navy">
+                  {(g.full_name ?? "?").slice(0, 1).toUpperCase()}
+                </div>
+              )}
+              <div className="mt-14 text-right text-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Island Coverage
+                </p>
+                <p className="flex items-center justify-end gap-1 font-medium text-ink">
+                  <MapPin size={13} className="text-brand" />
+                  {g.islands.join(", ") || "—"}
+                </p>
+              </div>
+            </div>
+
+            <h2 className="mt-3 text-xl font-bold text-ink">
+              {g.full_name ?? "Unnamed guide"}
+            </h2>
+            <div className="mt-1">
+              <StatusPill status={g.verification_status} />
+            </div>
+
+            {g.bio && (
+              <>
+                <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted">
+                  Guide Bio
+                </p>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted">{g.bio}</p>
+              </>
+            )}
+
+            <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted">
+              Submission Date
+            </p>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-ink">
+              <Calendar size={14} className="text-brand" /> {submitted}
+            </p>
+
+            {!!g.specialties.length && (
+              <>
+                <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted">
+                  Specialties
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {g.specialties.map((s) => (
+                    <Chip key={s}>{s}</Chip>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div
+              className={
+                g.conservation_pledge
+                  ? "mt-5 flex items-center gap-3 rounded-xl bg-brand-soft p-3.5"
+                  : "mt-5 flex items-center gap-3 rounded-xl bg-danger-soft p-3.5"
+              }
             >
-              <ExternalLink size={15} /> Open full size
-            </a>
+              <CircleCheck
+                size={22}
+                className={g.conservation_pledge ? "text-brand" : "text-danger"}
+              />
+              <div className="text-sm">
+                <p className="font-semibold text-ink">Catch &amp; Release Pledge</p>
+                <p className={g.conservation_pledge ? "text-brand" : "text-danger"}>
+                  {g.conservation_pledge ? "Accepted and Signed" : "Not signed"}
+                </p>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="mt-3 flex items-center gap-2 rounded-2xl bg-card px-4 py-5 text-sm text-muted">
-            <FileText size={18} /> No licence uploaded with this application.
-          </div>
-        )}
-      </section>
+        </div>
+
+        {/* Licence verification */}
+        <div className="rounded-2xl border border-line bg-white p-5">
+          <h3 className="flex items-center gap-2 text-base font-bold text-ink">
+            <FileText size={18} className="text-navy" /> License Verification
+          </h3>
+
+          {licenseUrl ? (
+            <div className="mt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Document Name
+              </p>
+              <p className="mt-1 flex items-center gap-2 text-sm font-medium text-ink">
+                <FileText size={15} className="text-danger" /> {licenseName}
+              </p>
+              <div className="mt-3 rounded-2xl border border-dashed border-line bg-card p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={licenseUrl}
+                  alt="Guide fishing licence"
+                  className="max-h-[26rem] w-full rounded-xl object-contain"
+                />
+              </div>
+              <a
+                href={licenseUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+              >
+                <ExternalLink size={15} /> Open full size
+              </a>
+            </div>
+          ) : (
+            <div className="mt-4 flex items-center gap-2 rounded-2xl bg-card px-4 py-6 text-sm text-muted">
+              <FileText size={18} /> No licence uploaded with this application.
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Decision */}
       {g.verification_status === "pending" ? (
-        <section className="mt-4 rounded-[20px] bg-white p-5">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-            Decision
-          </h2>
-          <div className="mt-3">
-            <ReviewActions guideId={g.id} />
-          </div>
-        </section>
+        <div className="mt-6 ml-auto max-w-md">
+          <ReviewActions guideId={g.id} />
+        </div>
       ) : (
-        <div className="mt-4 rounded-[20px] bg-white p-5 text-sm text-muted">
-          This application has already been{" "}
-          <span className="font-semibold text-ink">{g.verification_status}</span>.
+        <div className="mt-6 rounded-2xl border border-line bg-white p-5">
+          <p className="text-sm text-muted">
+            This application has already been{" "}
+            <span className="font-semibold text-ink">{g.verification_status}</span>.
+          </p>
           {g.verification_status === "rejected" && g.rejection_reason && (
-            <span className="mt-2 block rounded-xl bg-danger-soft px-3 py-2 text-danger">
+            <p className="mt-2 rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
               Reason: {g.rejection_reason}
-            </span>
+            </p>
+          )}
+          {g.verification_status === "approved" && (
+            <div className="mt-4">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">
+                QR management
+              </p>
+              <GuideQrCard guideId={g.id} name={g.full_name ?? "Guide"} />
+            </div>
           )}
         </div>
       )}
     </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div>
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="font-medium text-ink">{value ?? "—"}</dd>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: Guide["verification_status"] }) {
-  const map = {
-    approved: { cls: "bg-brand text-white", Icon: BadgeCheck, label: "Approved" },
-    rejected: { cls: "bg-danger text-white", Icon: CircleAlert, label: "Rejected" },
-    pending: { cls: "bg-navy text-white", Icon: Clock, label: "Pending" },
-  } as const;
-  const { cls, Icon, label } = map[status];
-  return (
-    <span className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>
-      <Icon size={13} /> {label}
-    </span>
   );
 }
