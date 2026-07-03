@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Logo } from "@/components/Logo";
 
 export default function AdminLoginPage() {
@@ -82,7 +83,12 @@ export default function AdminLoginPage() {
               <label className="flex items-center gap-2 text-sm text-muted">
                 <input type="checkbox" className="accent-navy" /> Remember me
               </label>
-              <span className="text-sm font-semibold text-brand">Forgot password?</span>
+              <Link
+                href="/admin/forgot-password"
+                className="text-sm font-semibold text-brand hover:underline"
+              >
+                Forgot password?
+              </Link>
             </div>
 
             {error && (
