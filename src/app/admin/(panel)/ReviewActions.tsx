@@ -37,16 +37,16 @@ export function ReviewActions({ guideId }: { guideId: string }) {
         <button
           onClick={() => decide("approve")}
           disabled={busy !== null}
-          className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand/90 disabled:opacity-60"
+          className="order-2 inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-brand/90 disabled:opacity-60"
         >
-          <Check size={18} /> {busy === "approve" ? "Approving…" : "Approve"}
+          <Check size={18} /> {busy === "approve" ? "Approving…" : "Approve Guide"}
         </button>
         <button
           onClick={() => setRejecting(true)}
           disabled={busy !== null}
-          className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-danger-soft px-5 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:opacity-60"
+          className="order-1 inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-danger/40 bg-white px-5 text-sm font-semibold text-danger transition-colors hover:bg-danger-soft disabled:opacity-60"
         >
-          <X size={18} /> Reject
+          <X size={18} /> Reject Application
         </button>
       </div>
 
