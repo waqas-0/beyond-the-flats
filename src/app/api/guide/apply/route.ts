@@ -1,30 +1,38 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest } from "next/server";
 
-export async function POST(request: NextRequest) {
-  // Regular client for auth check (reads session cookie)
-  const supabase = await createClient();
-  // Service client for storage uploads — bypasses RLS since we verify auth above
-  const storage = createServiceClient();
+// Avatar + licence files are uploaded straight to Supabase Storage from the
+// browser (see /api/guide/upload-url). This route only receives the resulting
+// storage paths, so the request body stays small and never trips Vercel's
+// ~4.5MB serverless body limit.
 
-  const { data: { user } } = await supabase.auth.getUser();
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     return Response.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const formData = await request.formData();
+  const body = (await request.json().catch(() => null)) as {
+    full_name?: string;
+    bio?: string;
+    islands?: string[];
+    specialties?: string[];
+    boat_type?: string | null;
+    years_experience?: number | null;
+    conservation_pledge?: boolean;
+    avatar_path?: string | null;
+    license_path?: string | null;
+  } | null;
 
-  const fullName = formData.get("full_name") as string;
-  const bio = formData.get("bio") as string;
-  const islands = JSON.parse((formData.get("islands") as string) ?? "[]") as string[];
-  const specialties = JSON.parse((formData.get("specialties") as string) ?? "[]") as string[];
-  const boatType = (formData.get("boat_type") as string | null) || null;
-  const yearsExperience = formData.get("years_experience")
-    ? Number(formData.get("years_experience"))
-    : null;
-  const conservationPledge = formData.get("conservation_pledge") === "true";
-  const avatarFile = formData.get("avatar") as File | null;
-  const licenseFile = formData.get("license") as File | null;
+  if (!body) {
+    return Response.json({ error: "Invalid request." }, { status: 400 });
+  }
+
+  const fullName = body.full_name?.trim();
+  const conservationPledge = body.conservation_pledge === true;
 
   if (!fullName || !conservationPledge) {
     return Response.json(
@@ -33,51 +41,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Paths must live under the caller's own folder — never trust a client path.
+  const ownsPath = (p: string | null | undefined) =>
+    !!p && p.startsWith(`${user.id}/`);
+
   let avatarUrl: string | null = null;
-  if (avatarFile && avatarFile.size > 0) {
-    const ext = avatarFile.name.split(".").pop();
-    const path = `${user.id}/avatar.${ext}`;
-    const { error: uploadErr } = await storage.storage
-      .from("guide-avatars")
-      .upload(path, avatarFile, { upsert: true });
-
-    if (uploadErr) {
-      console.error("[guide/apply] avatar upload:", uploadErr.message);
-      return Response.json({ error: "Avatar upload failed.", detail: uploadErr.message }, { status: 500 });
+  if (body.avatar_path) {
+    if (!ownsPath(body.avatar_path)) {
+      return Response.json({ error: "Invalid avatar path." }, { status: 400 });
     }
-
-    const { data: { publicUrl } } = storage.storage
-      .from("guide-avatars")
-      .getPublicUrl(path);
+    const storage = createServiceClient();
+    const {
+      data: { publicUrl },
+    } = storage.storage.from("guide-avatars").getPublicUrl(body.avatar_path);
     avatarUrl = publicUrl;
   }
 
   let licenseUrl: string | null = null;
-  if (licenseFile && licenseFile.size > 0) {
-    const ext = licenseFile.name.split(".").pop();
-    const path = `${user.id}/license.${ext}`;
-    const { error: uploadErr } = await storage.storage
-      .from("guide-licenses")
-      .upload(path, licenseFile, { upsert: true });
-
-    if (uploadErr) {
-      console.error("[guide/apply] license upload:", uploadErr.message);
-      return Response.json({ error: "License upload failed.", detail: uploadErr.message }, { status: 500 });
+  if (body.license_path) {
+    if (!ownsPath(body.license_path)) {
+      return Response.json({ error: "Invalid licence path." }, { status: 400 });
     }
-    // License bucket is private — just store the path for admin review
-    licenseUrl = path;
+    // Licence bucket is private — store the path for admin review.
+    licenseUrl = body.license_path;
   }
 
-  // Upsert the guide profile using the authenticated user's session
+  const yearsExperience =
+    body.years_experience != null && !Number.isNaN(Number(body.years_experience))
+      ? Number(body.years_experience)
+      : null;
+
   const { error } = await supabase.from("guides").upsert({
     id: user.id,
     phone: user.phone ?? "",
     full_name: fullName,
-    bio,
+    bio: body.bio ?? "",
     avatar_url: avatarUrl,
-    islands,
-    specialties,
-    boat_type: boatType,
+    islands: Array.isArray(body.islands) ? body.islands : [],
+    specialties: Array.isArray(body.specialties) ? body.specialties : [],
+    boat_type: body.boat_type || null,
     years_experience: yearsExperience,
     license_url: licenseUrl,
     conservation_pledge: conservationPledge,

@@ -19,6 +19,34 @@ import { AppShell } from "@/components/AppShell";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/clsx";
+import { createClient } from "@/lib/supabase/client";
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB — matches the on-screen limit
+
+// Upload a file straight to Supabase Storage via a signed URL minted by the API,
+// bypassing the ~4.5MB serverless request-body limit. Returns the storage path.
+async function uploadFile(kind: "avatar" | "license", file: File): Promise<string> {
+  const res = await fetch("/api/guide/upload-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind, filename: file.name }),
+  });
+  if (!res.ok) throw new Error("upload-url");
+
+  const { bucket, path, token } = (await res.json()) as {
+    bucket: string;
+    path: string;
+    token: string;
+  };
+
+  const supabase = createClient();
+  const { error } = await supabase.storage
+    .from(bucket)
+    .uploadToSignedUrl(path, token, file, { upsert: true });
+  if (error) throw error;
+
+  return path;
+}
 
 const ISLANDS = [
   "Nassau (New Providence)",
@@ -64,22 +92,37 @@ export default function GuideApplyPage() {
   const step = typeof view === "number" ? view : 3;
 
   async function submit() {
+    if (
+      (avatarFile && avatarFile.size > MAX_UPLOAD_BYTES) ||
+      (licenseFile && licenseFile.size > MAX_UPLOAD_BYTES)
+    ) {
+      setSubmitError("Files must be 10MB or smaller.");
+      return;
+    }
+
     setSubmitError(null);
     setSubmitting(true);
 
-    const fd = new FormData();
-    fd.append("full_name", fullName);
-    fd.append("bio", bio);
-    fd.append("boat_type", boatType);
-    if (years.trim()) fd.append("years_experience", years.trim());
-    fd.append("islands", JSON.stringify(islands));
-    fd.append("specialties", JSON.stringify(specialties));
-    fd.append("conservation_pledge", String(pledged));
-    if (avatarFile) fd.append("avatar", avatarFile);
-    if (licenseFile) fd.append("license", licenseFile);
-
     try {
-      const res = await fetch("/api/guide/apply", { method: "POST", body: fd });
+      // Upload files directly to storage first (large files skip the API route).
+      const avatarPath = avatarFile ? await uploadFile("avatar", avatarFile) : null;
+      const licensePath = licenseFile ? await uploadFile("license", licenseFile) : null;
+
+      const res = await fetch("/api/guide/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          bio,
+          boat_type: boatType || null,
+          years_experience: years.trim() ? Number(years.trim()) : null,
+          islands,
+          specialties,
+          conservation_pledge: pledged,
+          avatar_path: avatarPath,
+          license_path: licensePath,
+        }),
+      });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         setSubmitError(json.error ?? "Submission failed. Please try again.");
@@ -88,7 +131,7 @@ export default function GuideApplyPage() {
       setView("submitted");
     } catch {
       setSubmitError(
-        "Couldn't reach the server. Check your connection and try again.",
+        "Upload failed. Check your connection and try again.",
       );
     } finally {
       setSubmitting(false);
