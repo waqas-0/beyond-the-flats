@@ -494,7 +494,7 @@ function SubmittedCard({ onDone }: { onDone: () => void }) {
       </div>
       <h2 className="mt-4 text-2xl font-bold text-ink">You&apos;re submitted!</h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">
-        We&apos;ll review your licence and notify you on WhatsApp within 24 hours.
+        We&apos;ll review your licence and notify you via SMS within 24 hours.
       </p>
       <Button variant="primary" className="mt-6" onClick={onDone}>
         Done
