@@ -13,7 +13,6 @@ import {
   Check,
   CircleCheck,
   BadgeCheck,
-  Clock,
   CircleAlert,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -21,7 +20,17 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/clsx";
 
-const ISLANDS = ["Grand Bahama", "Abaco", "Andros", "Eleuthera", "Exuma"];
+const ISLANDS = [
+  "Nassau (New Providence)",
+  "Grand Bahama",
+  "Abaco",
+  "Andros",
+  "Eleuthera",
+  "Exuma",
+  "Long Island",
+  "Bimini",
+  "Berry Islands",
+];
 const SPECIALTIES = [
   "Bonefish",
   "Tarpon",
@@ -35,7 +44,7 @@ type View = 1 | 2 | 3 | "submitted" | "rejected";
 export default function GuideApplyPage() {
   const router = useRouter();
   const [view, setView] = useState<View>(1);
-  const [islands, setIslands] = useState<string[]>(["Abaco"]);
+  const [islands, setIslands] = useState<string[]>(["Nassau (New Providence)"]);
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [pledged, setPledged] = useState(false);
 
@@ -72,16 +81,21 @@ export default function GuideApplyPage() {
     if (avatarFile) fd.append("avatar", avatarFile);
     if (licenseFile) fd.append("license", licenseFile);
 
-    const res = await fetch("/api/guide/apply", { method: "POST", body: fd });
-    const json = await res.json();
-    setSubmitting(false);
-
-    if (!res.ok) {
-      setSubmitError(json.error ?? "Submission failed. Please try again.");
-      return;
+    try {
+      const res = await fetch("/api/guide/apply", { method: "POST", body: fd });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setSubmitError(json.error ?? "Submission failed. Please try again.");
+        return;
+      }
+      setView("submitted");
+    } catch {
+      setSubmitError(
+        "Couldn't reach the server. Check your connection and try again.",
+      );
+    } finally {
+      setSubmitting(false);
     }
-
-    setView("submitted");
   }
 
   return (
@@ -149,7 +163,12 @@ export default function GuideApplyPage() {
 
         {view === "submitted" && (
           <Overlay>
-            <SubmittedCard onDone={() => router.push("/guide/dashboard")} />
+            <SubmittedCard
+              onDone={async () => {
+                await fetch("/api/auth/signout", { method: "POST" });
+                router.push("/guide/signin");
+              }}
+            />
           </Overlay>
         )}
         {view === "rejected" && (
@@ -473,23 +492,12 @@ function SubmittedCard({ onDone }: { onDone: () => void }) {
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-soft">
         <BadgeCheck size={34} className="text-brand" />
       </div>
-      <h2 className="mt-4 text-2xl font-bold text-ink">Application Submitted</h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted">
-        Your credentials are now in the hands of our maritime certification
-        experts. We&apos;re confirming your documents to ensure the highest
-        standard of safety and expertise for our community.
+      <h2 className="mt-4 text-2xl font-bold text-ink">You&apos;re submitted!</h2>
+      <p className="mt-3 text-sm leading-relaxed text-muted">
+        We&apos;ll review your licence and notify you on WhatsApp within 24 hours.
       </p>
-      <div className="mt-5 rounded-2xl bg-navy p-5 text-left text-white">
-        <span className="inline-block rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-accent">
-          Verification in Progress
-        </span>
-        <p className="mt-3 flex items-center gap-2 text-xs text-white/70">
-          <Clock size={14} /> Estimated time to review
-        </p>
-        <p className="mt-1 text-3xl font-bold">24-48 hours</p>
-      </div>
-      <Button variant="primary" className="mt-5" onClick={onDone}>
-        Go to Dashboard <ArrowRight size={18} />
+      <Button variant="primary" className="mt-6" onClick={onDone}>
+        Done
       </Button>
     </div>
   );

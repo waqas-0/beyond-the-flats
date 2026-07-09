@@ -7,7 +7,17 @@ import { AppShell } from "@/components/AppShell";
 import { clsx } from "@/lib/clsx";
 import type { Guide } from "@/lib/supabase/types";
 
-const ISLANDS = ["Grand Bahama", "Abaco", "Andros", "Eleuthera", "Exuma"];
+const ISLANDS = [
+  "Nassau (New Providence)",
+  "Grand Bahama",
+  "Abaco",
+  "Andros",
+  "Eleuthera",
+  "Exuma",
+  "Long Island",
+  "Bimini",
+  "Berry Islands",
+];
 const SPECIALTIES = [
   "Bonefish",
   "Tarpon",
