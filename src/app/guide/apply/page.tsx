@@ -58,11 +58,8 @@ export default function GuideApplyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const toggle = (
-    list: string[],
-    set: (v: string[]) => void,
-    v: string,
-  ) => set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
+  const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
+    set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
   const step = typeof view === "number" ? view : 3;
 
@@ -151,7 +148,7 @@ export default function GuideApplyPage() {
             onContinue={() => setView(3)}
           />
         )}
-        {view === 3 && (
+        {(view === 3 || view === "submitted" || view === "rejected") && (
           <StepThree
             pledged={pledged}
             setPledged={setPledged}
@@ -231,7 +228,11 @@ function StepOne({
           <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-card">
             {avatarPreview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
+              <img
+                src={avatarPreview}
+                alt=""
+                className="h-full w-full object-cover"
+              />
             ) : (
               <User size={40} className="text-muted" strokeWidth={1.6} />
             )}
@@ -276,11 +277,15 @@ function StepOne({
 
       <div className="mt-5 flex gap-3">
         <div className="flex-1">
-          <label className="text-sm font-semibold text-ink">Years Guiding</label>
+          <label className="text-sm font-semibold text-ink">
+            Years Guiding
+          </label>
           <input
             value={years}
             inputMode="numeric"
-            onChange={(e) => setYears(e.target.value.replace(/\D/g, "").slice(0, 2))}
+            onChange={(e) =>
+              setYears(e.target.value.replace(/\D/g, "").slice(0, 2))
+            }
             placeholder="15"
             className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
           />
@@ -354,7 +359,9 @@ function StepTwo({
         </div>
         <h2 className="mt-4 text-2xl font-bold text-ink">Upload License</h2>
         {licenseFile ? (
-          <p className="mt-2 text-sm font-medium text-brand">{licenseFile.name}</p>
+          <p className="mt-2 text-sm font-medium text-brand">
+            {licenseFile.name}
+          </p>
         ) : (
           <p className="mt-2 text-base text-muted">
             Drag and drop your file here, or use the options below to capture or
@@ -392,7 +399,12 @@ function StepTwo({
         </ul>
       </div>
 
-      <Button variant="primary" className="mt-7" onClick={onContinue} disabled={!licenseFile}>
+      <Button
+        variant="primary"
+        className="mt-7"
+        onClick={onContinue}
+        disabled={!licenseFile}
+      >
         Continue <ArrowRight size={18} />
       </Button>
     </>
@@ -439,7 +451,8 @@ function StepThree({
             "Proper handling techniques to ensure survival rates.",
           ].map((t) => (
             <li key={t} className="flex gap-2">
-              <CircleCheck size={18} className="mt-0.5 shrink-0 text-brand" /> {t}
+              <CircleCheck size={18} className="mt-0.5 shrink-0 text-brand" />{" "}
+              {t}
             </li>
           ))}
         </ul>
@@ -479,7 +492,13 @@ function StepThree({
         onClick={onContinue}
         disabled={!pledged || submitting}
       >
-        {submitting ? "Submitting…" : <>Continue <ArrowRight size={18} /></>}
+        {submitting ? (
+          "Submitting…"
+        ) : (
+          <>
+            Continue <ArrowRight size={18} />
+          </>
+        )}
       </Button>
     </>
   );
@@ -492,9 +511,12 @@ function SubmittedCard({ onDone }: { onDone: () => void }) {
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-soft">
         <BadgeCheck size={34} className="text-brand" />
       </div>
-      <h2 className="mt-4 text-2xl font-bold text-ink">You&apos;re submitted!</h2>
+      <h2 className="mt-4 text-2xl font-bold text-ink">
+        You&apos;re submitted!
+      </h2>
       <p className="mt-3 text-sm leading-relaxed text-muted">
-        We&apos;ll review your licence and notify you via SMS within 24 hours.
+        We&apos;ll review your licence and notify you via SMS within 24-48
+        hours.
       </p>
       <Button variant="primary" className="mt-6" onClick={onDone}>
         Done
@@ -513,7 +535,8 @@ function RejectedCard({ onResubmit }: { onResubmit: () => void }) {
         Not Approved!
       </h2>
       <p className="mt-2 text-center text-sm text-muted">
-        Unfortunately, your account doesn&apos;t get approved due to below reason
+        Unfortunately, your account doesn&apos;t get approved due to below
+        reason
       </p>
 
       <h3 className="mt-6 text-lg font-bold text-ink">License Verification</h3>
