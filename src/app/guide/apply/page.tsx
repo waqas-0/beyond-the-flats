@@ -29,9 +29,12 @@ async function uploadFile(kind: "avatar" | "license", file: File): Promise<strin
   const res = await fetch("/api/guide/upload-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ kind, filename: file.name }),
+    body: JSON.stringify({ kind, contentType: file.type, size: file.size }),
   });
-  if (!res.ok) throw new Error("upload-url");
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error ?? "Upload failed. Please try again.");
+  }
 
   const { bucket, path, token } = (await res.json()) as {
     bucket: string;
@@ -129,9 +132,11 @@ export default function GuideApplyPage() {
         return;
       }
       setView("submitted");
-    } catch {
+    } catch (e) {
       setSubmitError(
-        "Upload failed. Check your connection and try again.",
+        e instanceof Error && e.message
+          ? e.message
+          : "Upload failed. Check your connection and try again.",
       );
     } finally {
       setSubmitting(false);
