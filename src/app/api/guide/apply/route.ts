@@ -1,39 +1,13 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { NextRequest } from "next/server";
 
-const MAX_BYTES = 10 * 1024 * 1024; // 10MB
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const LICENSE_TYPES = [...IMAGE_TYPES, "application/pdf"];
-const EXT_BY_TYPE: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "application/pdf": "pdf",
-};
-
-/** Validate a client-uploaded file against a MIME allow-list + size cap.
- *  Returns the safe extension (derived from content type, not the filename). */
-function checkFile(file: File, allowed: string[]): { ext: string } | { error: string } {
-  if (file.size > MAX_BYTES) return { error: "File exceeds the 10MB limit." };
-  if (!allowed.includes(file.type)) return { error: "Unsupported file type." };
-  return { ext: EXT_BY_TYPE[file.type] };
-}
-
-/** Parse a JSON string[] form field defensively — never throws. */
-function parseStringArray(raw: FormDataEntryValue | null): string[] {
-  if (typeof raw !== "string" || !raw.trim()) return [];
-  try {
-    const v = JSON.parse(raw);
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-}
+// Avatar + licence files are uploaded straight to Supabase Storage from the
+// browser (see /api/guide/upload-url). This route receives only the resulting
+// storage paths, so the request body stays small and never trips Vercel's
+// ~4.5MB serverless body limit.
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const storage = createServiceClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -41,19 +15,24 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const formData = await request.formData();
+  const body = (await request.json().catch(() => null)) as {
+    full_name?: string;
+    bio?: string;
+    islands?: string[];
+    specialties?: string[];
+    boat_type?: string | null;
+    years_experience?: number | null;
+    conservation_pledge?: boolean;
+    avatar_path?: string | null;
+    license_path?: string | null;
+  } | null;
 
-  const fullName = (formData.get("full_name") as string | null)?.trim() ?? "";
-  const bio = (formData.get("bio") as string | null) ?? "";
-  const islands = parseStringArray(formData.get("islands"));
-  const specialties = parseStringArray(formData.get("specialties"));
-  const boatType = (formData.get("boat_type") as string | null) || null;
-  const yearsExperience = formData.get("years_experience")
-    ? Number(formData.get("years_experience"))
-    : null;
-  const conservationPledge = formData.get("conservation_pledge") === "true";
-  const avatarFile = formData.get("avatar") as File | null;
-  const licenseFile = formData.get("license") as File | null;
+  if (!body) {
+    return Response.json({ error: "Invalid request." }, { status: 400 });
+  }
+
+  const fullName = body.full_name?.trim();
+  const conservationPledge = body.conservation_pledge === true;
 
   if (!fullName || !conservationPledge) {
     return Response.json(
@@ -62,60 +41,46 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Does the guide already have a licence on file (re-application)?
+  // Paths must live under the caller's own folder — never trust a client path.
+  const ownsPath = (p: string | null | undefined) =>
+    !!p && p.startsWith(`${user.id}/`);
+
+  if (body.avatar_path && !ownsPath(body.avatar_path)) {
+    return Response.json({ error: "Invalid avatar path." }, { status: 400 });
+  }
+  if (body.license_path && !ownsPath(body.license_path)) {
+    return Response.json({ error: "Invalid licence path." }, { status: 400 });
+  }
+
+  // A licence is required — but a returning guide who already has one on file
+  // (e.g. re-applying after a rejection) doesn't have to re-upload it.
   const { data: existing } = await supabase
     .from("guides")
     .select("license_url")
     .eq("id", user.id)
     .maybeSingle();
   const hasLicenceOnFile = !!existing?.license_url;
-
-  const hasNewLicence = !!(licenseFile && licenseFile.size > 0);
-  if (!hasLicenceOnFile && !hasNewLicence) {
+  if (!hasLicenceOnFile && !body.license_path) {
     return Response.json(
       { error: "A fishing licence upload is required." },
       { status: 400 },
     );
   }
 
-  // Avatar (optional) — validated, extension derived from content type.
+  // Avatar public URL (cache-busted so a re-upload to the same path shows up).
   let avatarUrl: string | null = null;
-  if (avatarFile && avatarFile.size > 0) {
-    const checked = checkFile(avatarFile, IMAGE_TYPES);
-    if ("error" in checked) {
-      return Response.json({ error: `Avatar: ${checked.error}` }, { status: 400 });
-    }
-    const path = `${user.id}/avatar.${checked.ext}`;
-    const { error: uploadErr } = await storage.storage
-      .from("guide-avatars")
-      .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
-    if (uploadErr) {
-      console.error("[guide/apply] avatar upload:", uploadErr.message);
-      return Response.json({ error: "Avatar upload failed." }, { status: 500 });
-    }
+  if (body.avatar_path) {
+    const storage = createServiceClient();
     const {
       data: { publicUrl },
-    } = storage.storage.from("guide-avatars").getPublicUrl(path);
-    avatarUrl = `${publicUrl}?v=${avatarFile.size}`;
+    } = storage.storage.from("guide-avatars").getPublicUrl(body.avatar_path);
+    avatarUrl = `${publicUrl}?v=${Date.now()}`;
   }
 
-  // Licence (private bucket) — validated, path stored.
-  let licenseUrl: string | null = null;
-  if (hasNewLicence) {
-    const checked = checkFile(licenseFile!, LICENSE_TYPES);
-    if ("error" in checked) {
-      return Response.json({ error: `Licence: ${checked.error}` }, { status: 400 });
-    }
-    const path = `${user.id}/license.${checked.ext}`;
-    const { error: uploadErr } = await storage.storage
-      .from("guide-licenses")
-      .upload(path, licenseFile!, { upsert: true, contentType: licenseFile!.type });
-    if (uploadErr) {
-      console.error("[guide/apply] license upload:", uploadErr.message);
-      return Response.json({ error: "Licence upload failed." }, { status: 500 });
-    }
-    licenseUrl = path;
-  }
+  const yearsExperience =
+    body.years_experience != null && !Number.isNaN(Number(body.years_experience))
+      ? Number(body.years_experience)
+      : null;
 
   // Only overwrite avatar_url / license_url when a NEW file was uploaded —
   // otherwise a re-application would wipe the stored values.
@@ -123,19 +88,20 @@ export async function POST(request: NextRequest) {
     id: user.id,
     phone: user.phone ?? "",
     full_name: fullName,
-    bio,
-    islands,
-    specialties,
-    boat_type: boatType,
+    bio: body.bio ?? "",
+    islands: Array.isArray(body.islands) ? body.islands : [],
+    specialties: Array.isArray(body.specialties) ? body.specialties : [],
+    boat_type: body.boat_type || null,
     years_experience: yearsExperience,
     conservation_pledge: conservationPledge,
     verification_status: "pending",
     rejection_reason: null,
   };
   if (avatarUrl !== null) payload.avatar_url = avatarUrl;
-  if (licenseUrl !== null) payload.license_url = licenseUrl;
+  if (body.license_path) payload.license_url = body.license_path;
 
   const { error } = await supabase.from("guides").upsert(payload);
+
   if (error) {
     console.error("[guide/apply]", error.message);
     return Response.json({ error: "Failed to save application." }, { status: 500 });
