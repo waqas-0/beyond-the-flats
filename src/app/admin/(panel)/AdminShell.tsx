@@ -73,9 +73,9 @@ export function AdminShell({
   return (
     <div className="min-h-screen bg-bg lg:flex">
       {/* Sidebar — static on desktop */}
-      <aside className="hidden w-64 shrink-0 border-r border-line bg-card lg:block">
-        <div className="px-6 pt-7">
-          <Logo size="sm" />
+      <aside className="hidden w-64 shrink-0 bg-[#e8edf2] lg:block">
+        <div className="px-6 pt-8 pb-2">
+          <Logo size="md" />
         </div>
         {nav}
       </aside>
@@ -85,7 +85,7 @@ export function AdminShell({
         <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setOpen(false)}>
           <div className="absolute inset-0 bg-black/40" />
           <aside
-            className="absolute inset-y-0 left-0 w-64 bg-card"
+            className="absolute inset-y-0 left-0 w-64 bg-[#e8edf2]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 pt-6">

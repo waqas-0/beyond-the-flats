@@ -8,6 +8,7 @@ import { GuideHeader } from "@/components/GuideHeader";
 import { Stars } from "@/components/ui/Stars";
 import { createClient } from "@/lib/supabase/server";
 import type { Guide, Review } from "@/lib/supabase/types";
+import { FEATURES } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";

@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { LayoutGrid, Sailboat, User } from "lucide-react";
 import { clsx } from "@/lib/clsx";
+import { FEATURES } from "@/lib/features";
 
+// The Trips tab belongs to Week-4 trip logging — shown only when that feature
+// flag is on.
 const tabs = [
   { href: "/guide/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { href: "/guide/trips",     label: "Trips",     icon: Sailboat   },
+  ...(FEATURES.tripLogging
+    ? [{ href: "/guide/trips", label: "Trips", icon: Sailboat }]
+    : []),
   { href: "/guide/profile",   label: "Profile",   icon: User       },
-] as const;
+];
 
 type Active = "dashboard" | "trips" | "profile";
 
