@@ -1,16 +1,9 @@
-import Link from "next/link";
-import {
-  RefreshCw,
-  Sailboat,
-  CalendarDays,
-  Fish,
-  Star,
-  ChevronRight,
-} from "lucide-react";
+import { CalendarDays, Fish, Star, ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { BottomNav } from "@/components/BottomNav";
 import { GuideHeader } from "@/components/GuideHeader";
+import { DashboardActions } from "@/components/DashboardActions";
 import { guideUser } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -33,39 +26,8 @@ export default function GuideDashboardPage() {
           </p>
         </section>
 
-        {/* Status + primary action */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between rounded-[20px] border border-line bg-card px-4 py-5">
-            <div className="flex items-center gap-2">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft">
-                <RefreshCw size={16} className="text-brand" />
-              </span>
-              <div>
-                <p className="text-sm uppercase tracking-wide text-brand">
-                  Cloud Status
-                </p>
-                <p className="text-2xl text-ink">Data Synced</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-faint">Last update</p>
-              <p className="text-xs text-muted">2 min ago</p>
-            </div>
-          </div>
-
-          <Link
-            href="/guide/trips/active"
-            className="flex items-center justify-between rounded-[20px] bg-navy p-5 shadow-lg shadow-black/10"
-          >
-            <div>
-              <p className="text-sm tracking-wide text-accent">Ready to cast?</p>
-              <p className="text-2xl uppercase tracking-tight text-white">
-                Start Today&apos;s Trip
-              </p>
-            </div>
-            <Sailboat size={40} className="text-accent/40" />
-          </Link>
-        </section>
+        {/* Status banner + primary action (approval-gated) */}
+        <DashboardActions />
 
         {/* Season performance */}
         <section className="space-y-4">

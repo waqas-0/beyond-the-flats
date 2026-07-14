@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Logo } from "@/components/Logo";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -15,7 +16,6 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     const res = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -23,70 +23,89 @@ export default function AdminLoginPage() {
     });
     const json = await res.json().catch(() => ({}));
     setLoading(false);
-
     if (!res.ok) {
       setError(json.error ?? "Something went wrong.");
       return;
     }
-
     router.replace("/admin");
     router.refresh();
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-bg px-5">
-      <div className="w-full max-w-[400px] rounded-[20px] bg-white p-8 shadow-xl">
-        <div className="flex flex-col items-center text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-navy text-white">
-            <ShieldCheck size={28} strokeWidth={1.8} />
+    <main className="min-h-screen bg-bg lg:grid lg:grid-cols-2">
+      {/* Coastal photo — desktop only (Figma asset) */}
+      <div
+        className="hidden bg-cover bg-center lg:block"
+        style={{ backgroundImage: "url('/brand/admin-login-bg.jpg')" }}
+      >
+        <div className="h-full w-full bg-black/40" />
+      </div>
+
+      {/* Form */}
+      <div className="flex min-h-screen items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="flex justify-center">
+            <Logo size="md" priority />
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-ink">BTF Admin</h1>
-          <p className="mt-1 text-sm text-muted">
-            Sign in to review guide applications
+
+          <h1 className="mt-9 text-3xl font-bold text-ink">Sign in to your portal</h1>
+          <p className="mt-1.5 text-sm text-muted">
+            Manage guide verification, reviews, and platform tools.
           </p>
+
+          <form onSubmit={submit} className="mt-7 space-y-4">
+            <div>
+              <label className="text-sm font-semibold text-ink">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="team@beyondtheflats.com"
+                autoComplete="email"
+                required
+                className="mt-1.5 w-full rounded-2xl border border-line bg-card px-5 py-3.5 text-sm text-ink outline-none focus:border-brand placeholder:text-faint"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-ink">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+                className="mt-1.5 w-full rounded-2xl border border-line bg-card px-5 py-3.5 text-sm text-ink outline-none focus:border-brand placeholder:text-faint"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm text-muted">
+                <input type="checkbox" className="accent-navy" /> Remember me
+              </label>
+              <Link
+                href="/admin/forgot-password"
+                className="text-sm font-semibold text-brand hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
+            {error && (
+              <p className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-2xl bg-navy py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-navy/90 disabled:opacity-60"
+            >
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
         </div>
-
-        <form onSubmit={submit} className="mt-7 space-y-3.5">
-          <div className="flex items-center gap-3 rounded-2xl border border-line bg-bg px-4 py-3.5 focus-within:border-brand">
-            <Mail size={20} className="text-ink" strokeWidth={1.8} />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="team@beyondtheflats.com"
-              autoComplete="email"
-              className="w-full bg-transparent text-base text-ink outline-none placeholder:text-faint"
-              required
-            />
-          </div>
-
-          <div className="flex items-center gap-3 rounded-2xl border border-line bg-bg px-4 py-3.5 focus-within:border-brand">
-            <Lock size={20} className="text-ink" strokeWidth={1.8} />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              autoComplete="current-password"
-              className="w-full bg-transparent text-base text-ink outline-none placeholder:text-faint"
-              required
-            />
-          </div>
-
-          {error && (
-            <p className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-navy px-5 text-[15px] font-semibold text-white transition-colors hover:bg-navy/90 disabled:opacity-60"
-          >
-            {loading ? "Signing in…" : "Sign In"}
-          </button>
-        </form>
       </div>
     </main>
   );

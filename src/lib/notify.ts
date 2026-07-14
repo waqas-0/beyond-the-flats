@@ -1,11 +1,16 @@
 // Guide notifications — verification approvals/rejections.
 //
-// The product brief originally specced WhatsApp, but OTP was reverted to SMS
-// and no messaging channel is wired yet. This module is the single seam where
-// that integration will live: today it records the message (console) and
-// no-ops cleanly when no provider is configured, so the approve/reject flow
-// works end-to-end now. Swap the body of `deliver()` for Twilio/SMS later
-// without touching any caller.
+// Channel is SMS (WhatsApp was dropped). Sent via Twilio's Messages API using
+// plain fetch (no SDK dependency). This is the single seam every approve/reject
+// flows through.
+//
+// Required env vars to actually send (otherwise it safely no-ops + logs):
+//   TWILIO_ACCOUNT_SID
+//   TWILIO_AUTH_TOKEN
+//   TWILIO_MESSAGING_SERVICE_SID   (preferred)  — or —  TWILIO_FROM_NUMBER
+//
+// Even when SMS isn't configured, the guide still sees their status + rejection
+// reason in-app on their profile page, so they're never left in the dark.
 
 export type NotifyKind = "approved" | "rejected";
 
@@ -20,8 +25,7 @@ export type NotifyInput = {
 
 export type NotifyResult = {
   sent: boolean;
-  /** "noop" until a real channel is configured. */
-  channel: "noop";
+  channel: "sms" | "noop";
   message: string;
 };
 
@@ -34,20 +38,71 @@ function composeMessage({ kind, name, reason }: NotifyInput): string {
   return `Beyond The Flats: Hi ${who}, we couldn't verify your guide application yet.${why} Please update your details and re-submit.`;
 }
 
+function smsConfig() {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+  const from = process.env.TWILIO_FROM_NUMBER;
+  if (!accountSid || !authToken || (!messagingServiceSid && !from)) return null;
+  return { accountSid, authToken, messagingServiceSid, from };
+}
+
+async function sendSms(to: string, body: string): Promise<void> {
+  const cfg = smsConfig();
+  if (!cfg) throw new Error("SMS not configured");
+
+  const params = new URLSearchParams();
+  params.set("To", to);
+  params.set("Body", body);
+  if (cfg.messagingServiceSid) params.set("MessagingServiceSid", cfg.messagingServiceSid);
+  else params.set("From", cfg.from!);
+
+  const auth = Buffer.from(`${cfg.accountSid}:${cfg.authToken}`).toString("base64");
+  const res = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${cfg.accountSid}/Messages.json`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    },
+  );
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Twilio ${res.status}: ${detail.slice(0, 200)}`);
+  }
+}
+
 /**
- * Notify a guide about a verification outcome.
+ * Notify a guide about a verification outcome via SMS.
  *
- * Never throws — notification failures must not roll back an approval. The
- * caller can inspect `sent` if it cares, but the verification decision is the
- * source of truth either way.
+ * Never throws — a notification failure must not roll back an approval. The
+ * verification decision is the source of truth either way; the caller can
+ * inspect `sent` if it cares.
  */
 export async function notifyGuide(input: NotifyInput): Promise<NotifyResult> {
   const message = composeMessage(input);
 
-  // No channel configured yet: record and no-op so the flow stays unblocked.
-  console.info(
-    `[notify:${input.kind}] → ${input.phone ?? "(no phone on file)"}: ${message}`,
-  );
+  // No channel configured, or no phone on file → record and no-op.
+  if (!smsConfig() || !input.phone) {
+    console.info(
+      `[notify:${input.kind}] (not sent) → ${input.phone ?? "no phone"}: ${message}`,
+    );
+    return { sent: false, channel: "noop", message };
+  }
 
-  return { sent: false, channel: "noop", message };
+  try {
+    await sendSms(input.phone, message);
+    console.info(`[notify:${input.kind}] SMS sent → ${input.phone}`);
+    return { sent: true, channel: "sms", message };
+  } catch (err) {
+    console.error(
+      `[notify:${input.kind}] SMS send failed:`,
+      err instanceof Error ? err.message : err,
+    );
+    return { sent: false, channel: "sms", message };
+  }
 }
