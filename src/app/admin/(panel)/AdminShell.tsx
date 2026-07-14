@@ -19,7 +19,7 @@ import { clsx } from "@/lib/clsx";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/directory", label: "My Guides", icon: Users },
+  { href: "/admin/directory", label: "Manage Guides", icon: Users },
   { href: "/admin/applications", label: "Guide Applications", icon: ClipboardList },
   { href: "/admin/qr", label: "QR Management", icon: QrCode },
   { href: "/admin/export", label: "Export Data", icon: Upload },

@@ -15,7 +15,7 @@ export default async function AdminDirectoryPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-ink">My Guides</h1>
+      <h1 className="text-2xl font-bold text-ink">Manage Guides</h1>
       <p className="mt-1 text-sm text-muted">
         Every registered guide — search, filter by status, and open a profile.
       </p>
