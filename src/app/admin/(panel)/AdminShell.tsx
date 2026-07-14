@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  Users,
   ClipboardList,
+  QrCode,
   LogOut,
   Menu,
   X,
@@ -14,10 +16,12 @@ import {
 import { Logo } from "@/components/Logo";
 import { clsx } from "@/lib/clsx";
 
-// Admin sidebar per the Figma design — verification scope on this branch.
+// Admin sidebar per the Figma design.
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/directory", label: "Manage Guides", icon: Users },
   { href: "/admin/applications", label: "Guide Applications", icon: ClipboardList },
+  { href: "/admin/qr", label: "QR Management", icon: QrCode },
 ];
 
 export function AdminShell({
