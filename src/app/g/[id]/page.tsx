@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   BadgeCheck,
@@ -7,6 +8,10 @@ import {
   Fish,
   MessageSquareText,
   User,
+  ShieldCheck,
+  ExternalLink,
+  Ticket,
+  ChevronRight,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Logo } from "@/components/Logo";
@@ -102,7 +107,9 @@ export default async function PublicGuideProfilePage({
       );
   }
   const recent = trips.slice(0, 5);
-  const smsHref = guide.phone ? `sms:${guide.phone}` : undefined;
+  const waDigits = guide.phone ? guide.phone.replace(/\D/g, "") : "";
+  const waHref = waDigits ? `https://wa.me/${waDigits}` : undefined;
+  const browseIsland = guide.islands[0];
 
   return (
     <AppShell homeIndicator={false}>
@@ -139,6 +146,12 @@ export default async function PublicGuideProfilePage({
             <p className="mt-1 text-sm font-medium text-brand">
               {guide.specialties.join(", ")}
             </p>
+          )}
+
+          {guide.reef_ambassador && (
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
+              <ShieldCheck size={14} /> Reef Ambassador Certified
+            </span>
           )}
 
           <div className="mt-4 grid grid-cols-2 gap-3">
@@ -251,23 +264,66 @@ export default async function PublicGuideProfilePage({
         </section>
 
         {/* CTA */}
-        <section className="px-5 pb-8 pt-7">
+        <section className="px-5 pt-7">
           <div className="rounded-2xl bg-linear-to-br from-navy to-brand p-6 text-white">
             <h3 className="text-xl font-bold">Ready to fish?</h3>
             <p className="mt-2 text-sm leading-relaxed text-white/80">
               Message {guide.full_name?.split(" ")[0] ?? "this guide"} to plan your
               next expedition on the flats.
             </p>
-            {smsHref ? (
-              <Button href={smsHref} variant="brand" className="mt-5 uppercase tracking-wide">
-                <MessageSquareText size={16} /> Message Guide
+            {waHref ? (
+              <Button href={waHref} variant="brand" className="mt-5 uppercase tracking-wide">
+                <MessageSquareText size={16} /> Message this guide
               </Button>
             ) : (
               <div className="mt-5 flex items-center gap-2 text-sm text-white/70">
                 <User size={16} /> Contact unavailable
               </div>
             )}
+            {guide.website_url && (
+              <a
+                href={guide.website_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white underline-offset-2 hover:underline"
+              >
+                Visit my website <ExternalLink size={14} />
+              </a>
+            )}
           </div>
+        </section>
+
+        {/* Permit prompt + browse other guides */}
+        <section className="space-y-5 px-5 pb-8 pt-5">
+          <div className="flex items-start gap-3 rounded-2xl border border-line bg-card p-4">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
+              <Ticket size={18} />
+            </span>
+            <div>
+              <p className="text-sm text-ink">
+                Visiting anglers need a fishing permit before getting on the
+                water.
+              </p>
+              <Link
+                href="/permits"
+                className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-brand"
+              >
+                Get yours here <ChevronRight size={15} />
+              </Link>
+            </div>
+          </div>
+
+          {browseIsland && (
+            <div className="text-center">
+              <Link
+                href={`/guides?island=${encodeURIComponent(browseIsland)}`}
+                className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink"
+              >
+                Browse other guides on {browseIsland}
+                <ChevronRight size={15} />
+              </Link>
+            </div>
+          )}
         </section>
       </article>
 

@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { normalizeWebsite } from "@/lib/url";
 import { NextRequest } from "next/server";
 
 // Avatar + licence files are uploaded straight to Supabase Storage from the
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
     specialties?: string[];
     boat_type?: string | null;
     years_experience?: number | null;
+    website_url?: string | null;
     conservation_pledge?: boolean;
     avatar_path?: string | null;
     license_path?: string | null;
@@ -93,6 +95,7 @@ export async function POST(request: NextRequest) {
     specialties: Array.isArray(body.specialties) ? body.specialties : [],
     boat_type: body.boat_type || null,
     years_experience: yearsExperience,
+    website_url: normalizeWebsite(body.website_url),
     conservation_pledge: conservationPledge,
     verification_status: "pending",
     rejection_reason: null,

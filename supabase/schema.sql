@@ -15,6 +15,8 @@ create table public.guides (
   specialties          text[]      not null default '{}',
   years_experience     int,
   license_url          text,
+  website_url          text,
+  reef_ambassador      boolean     not null default false,
   qr_url               text,
   verification_status  text        not null default 'pending'
                          check (verification_status in ('pending', 'approved', 'rejected')),
@@ -23,6 +25,11 @@ create table public.guides (
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );
+
+-- Week 5 migration (idempotent) — public-profile additions for databases
+-- created before these fields existed. Safe to run repeatedly.
+alter table public.guides add column if not exists website_url     text;
+alter table public.guides add column if not exists reef_ambassador boolean not null default false;
 
 -- ── trips ─────────────────────────────────────────────────────
 create table public.trips (

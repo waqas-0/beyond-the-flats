@@ -84,6 +84,7 @@ export default function GuideApplyPage() {
   const [bio, setBio] = useState("");
   const [boatType, setBoatType] = useState("");
   const [years, setYears] = useState("");
+  const [website, setWebsite] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -119,6 +120,7 @@ export default function GuideApplyPage() {
           bio,
           boat_type: boatType || null,
           years_experience: years.trim() ? Number(years.trim()) : null,
+          website_url: website.trim() || null,
           islands,
           specialties,
           conservation_pledge: pledged,
@@ -180,6 +182,8 @@ export default function GuideApplyPage() {
             setBoatType={setBoatType}
             years={years}
             setYears={setYears}
+            website={website}
+            setWebsite={setWebsite}
             avatarFile={avatarFile}
             setAvatarFile={setAvatarFile}
             islands={islands}
@@ -236,6 +240,8 @@ function StepOne({
   setBoatType,
   years,
   setYears,
+  website,
+  setWebsite,
   avatarFile,
   setAvatarFile,
   islands,
@@ -252,6 +258,8 @@ function StepOne({
   setBoatType: (v: string) => void;
   years: string;
   setYears: (v: string) => void;
+  website: string;
+  setWebsite: (v: string) => void;
   avatarFile: File | null;
   setAvatarFile: (f: File | null) => void;
   islands: string[];
@@ -347,6 +355,23 @@ function StepOne({
             className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
           />
         </div>
+      </div>
+
+      <div className="mt-5">
+        <label className="text-sm font-semibold text-ink">
+          Personal Website{" "}
+          <span className="font-normal text-faint">(optional)</span>
+        </label>
+        <input
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          inputMode="url"
+          placeholder="www.islandbeyfly.com"
+          className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
+        />
+        <p className="mt-1.5 text-xs text-faint">
+          Shown on your public profile and QR card.
+        </p>
       </div>
 
       <ChipGroup title="🏝️ Island Coverage">
