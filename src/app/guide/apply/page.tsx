@@ -13,15 +13,55 @@ import {
   Check,
   CircleCheck,
   BadgeCheck,
-  Clock,
   CircleAlert,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/clsx";
+import { createClient } from "@/lib/supabase/client";
 
-const ISLANDS = ["Grand Bahama", "Abaco", "Andros", "Eleuthera", "Exuma"];
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB — matches the on-screen limit
+
+// Upload a file straight to Supabase Storage via a signed URL minted by the API,
+// bypassing the ~4.5MB serverless request-body limit. Returns the storage path.
+async function uploadFile(kind: "avatar" | "license", file: File): Promise<string> {
+  const res = await fetch("/api/guide/upload-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind, contentType: file.type, size: file.size }),
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error ?? "Upload failed. Please try again.");
+  }
+
+  const { bucket, path, token } = (await res.json()) as {
+    bucket: string;
+    path: string;
+    token: string;
+  };
+
+  const supabase = createClient();
+  const { error } = await supabase.storage
+    .from(bucket)
+    .uploadToSignedUrl(path, token, file, { upsert: true });
+  if (error) throw error;
+
+  return path;
+}
+
+const ISLANDS = [
+  "Nassau (New Providence)",
+  "Grand Bahama",
+  "Abaco",
+  "Andros",
+  "Eleuthera",
+  "Exuma",
+  "Long Island",
+  "Bimini",
+  "Berry Islands",
+];
 const SPECIALTIES = [
   "Bonefish",
   "Tarpon",
@@ -35,7 +75,7 @@ type View = 1 | 2 | 3 | "submitted" | "rejected";
 export default function GuideApplyPage() {
   const router = useRouter();
   const [view, setView] = useState<View>(1);
-  const [islands, setIslands] = useState<string[]>(["Abaco"]);
+  const [islands, setIslands] = useState<string[]>(["Nassau (New Providence)"]);
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [pledged, setPledged] = useState(false);
 
@@ -44,44 +84,65 @@ export default function GuideApplyPage() {
   const [bio, setBio] = useState("");
   const [boatType, setBoatType] = useState("");
   const [years, setYears] = useState("");
+  const [website, setWebsite] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const toggle = (
-    list: string[],
-    set: (v: string[]) => void,
-    v: string,
-  ) => set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
+  const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
+    set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
   const step = typeof view === "number" ? view : 3;
 
   async function submit() {
-    setSubmitError(null);
-    setSubmitting(true);
-
-    const fd = new FormData();
-    fd.append("full_name", fullName);
-    fd.append("bio", bio);
-    fd.append("boat_type", boatType);
-    if (years.trim()) fd.append("years_experience", years.trim());
-    fd.append("islands", JSON.stringify(islands));
-    fd.append("specialties", JSON.stringify(specialties));
-    fd.append("conservation_pledge", String(pledged));
-    if (avatarFile) fd.append("avatar", avatarFile);
-    if (licenseFile) fd.append("license", licenseFile);
-
-    const res = await fetch("/api/guide/apply", { method: "POST", body: fd });
-    const json = await res.json();
-    setSubmitting(false);
-
-    if (!res.ok) {
-      setSubmitError(json.error ?? "Submission failed. Please try again.");
+    if (
+      (avatarFile && avatarFile.size > MAX_UPLOAD_BYTES) ||
+      (licenseFile && licenseFile.size > MAX_UPLOAD_BYTES)
+    ) {
+      setSubmitError("Files must be 10MB or smaller.");
       return;
     }
 
-    setView("submitted");
+    setSubmitError(null);
+    setSubmitting(true);
+
+    try {
+      // Upload files directly to storage first (large files skip the API route).
+      const avatarPath = avatarFile ? await uploadFile("avatar", avatarFile) : null;
+      const licensePath = licenseFile ? await uploadFile("license", licenseFile) : null;
+
+      const res = await fetch("/api/guide/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          bio,
+          boat_type: boatType || null,
+          years_experience: years.trim() ? Number(years.trim()) : null,
+          website_url: website.trim() || null,
+          islands,
+          specialties,
+          conservation_pledge: pledged,
+          avatar_path: avatarPath,
+          license_path: licensePath,
+        }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setSubmitError(json.error ?? "Submission failed. Please try again.");
+        return;
+      }
+      setView("submitted");
+    } catch (e) {
+      setSubmitError(
+        e instanceof Error && e.message
+          ? e.message
+          : "Upload failed. Check your connection and try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -121,6 +182,8 @@ export default function GuideApplyPage() {
             setBoatType={setBoatType}
             years={years}
             setYears={setYears}
+            website={website}
+            setWebsite={setWebsite}
             avatarFile={avatarFile}
             setAvatarFile={setAvatarFile}
             islands={islands}
@@ -137,7 +200,7 @@ export default function GuideApplyPage() {
             onContinue={() => setView(3)}
           />
         )}
-        {view === 3 && (
+        {(view === 3 || view === "submitted" || view === "rejected") && (
           <StepThree
             pledged={pledged}
             setPledged={setPledged}
@@ -149,7 +212,12 @@ export default function GuideApplyPage() {
 
         {view === "submitted" && (
           <Overlay>
-            <SubmittedCard onDone={() => router.push("/guide/dashboard")} />
+            <SubmittedCard
+              onDone={async () => {
+                await fetch("/api/auth/signout", { method: "POST" });
+                router.push("/guide/signin");
+              }}
+            />
           </Overlay>
         )}
         {view === "rejected" && (
@@ -172,6 +240,8 @@ function StepOne({
   setBoatType,
   years,
   setYears,
+  website,
+  setWebsite,
   avatarFile,
   setAvatarFile,
   islands,
@@ -188,6 +258,8 @@ function StepOne({
   setBoatType: (v: string) => void;
   years: string;
   setYears: (v: string) => void;
+  website: string;
+  setWebsite: (v: string) => void;
   avatarFile: File | null;
   setAvatarFile: (f: File | null) => void;
   islands: string[];
@@ -212,7 +284,11 @@ function StepOne({
           <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-card">
             {avatarPreview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
+              <img
+                src={avatarPreview}
+                alt=""
+                className="h-full w-full object-cover"
+              />
             ) : (
               <User size={40} className="text-muted" strokeWidth={1.6} />
             )}
@@ -257,11 +333,15 @@ function StepOne({
 
       <div className="mt-5 flex gap-3">
         <div className="flex-1">
-          <label className="text-sm font-semibold text-ink">Years Guiding</label>
+          <label className="text-sm font-semibold text-ink">
+            Years Guiding
+          </label>
           <input
             value={years}
             inputMode="numeric"
-            onChange={(e) => setYears(e.target.value.replace(/\D/g, "").slice(0, 2))}
+            onChange={(e) =>
+              setYears(e.target.value.replace(/\D/g, "").slice(0, 2))
+            }
             placeholder="15"
             className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
           />
@@ -275,6 +355,23 @@ function StepOne({
             className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
           />
         </div>
+      </div>
+
+      <div className="mt-5">
+        <label className="text-sm font-semibold text-ink">
+          Personal Website{" "}
+          <span className="font-normal text-faint">(optional)</span>
+        </label>
+        <input
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          inputMode="url"
+          placeholder="www.islandbeyfly.com"
+          className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
+        />
+        <p className="mt-1.5 text-xs text-faint">
+          Shown on your public profile and QR card.
+        </p>
       </div>
 
       <ChipGroup title="🏝️ Island Coverage">
@@ -335,7 +432,9 @@ function StepTwo({
         </div>
         <h2 className="mt-4 text-2xl font-bold text-ink">Upload License</h2>
         {licenseFile ? (
-          <p className="mt-2 text-sm font-medium text-brand">{licenseFile.name}</p>
+          <p className="mt-2 text-sm font-medium text-brand">
+            {licenseFile.name}
+          </p>
         ) : (
           <p className="mt-2 text-base text-muted">
             Drag and drop your file here, or use the options below to capture or
@@ -373,14 +472,18 @@ function StepTwo({
         </ul>
       </div>
 
-      <Button variant="primary" className="mt-7" onClick={onContinue} disabled={!licenseFile}>
+      <Button
+        variant="primary"
+        className="mt-7"
+        onClick={onContinue}
+        disabled={!licenseFile}
+      >
         Continue <ArrowRight size={18} />
       </Button>
     </>
   );
 }
 
-/* ---------- Step 3 ---------- */
 function StepThree({
   pledged,
   setPledged,
@@ -421,7 +524,8 @@ function StepThree({
             "Proper handling techniques to ensure survival rates.",
           ].map((t) => (
             <li key={t} className="flex gap-2">
-              <CircleCheck size={18} className="mt-0.5 shrink-0 text-brand" /> {t}
+              <CircleCheck size={18} className="mt-0.5 shrink-0 text-brand" />{" "}
+              {t}
             </li>
           ))}
         </ul>
@@ -461,7 +565,13 @@ function StepThree({
         onClick={onContinue}
         disabled={!pledged || submitting}
       >
-        {submitting ? "Submitting…" : <>Continue <ArrowRight size={18} /></>}
+        {submitting ? (
+          "Submitting…"
+        ) : (
+          <>
+            Continue <ArrowRight size={18} />
+          </>
+        )}
       </Button>
     </>
   );
@@ -474,23 +584,15 @@ function SubmittedCard({ onDone }: { onDone: () => void }) {
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-soft">
         <BadgeCheck size={34} className="text-brand" />
       </div>
-      <h2 className="mt-4 text-2xl font-bold text-ink">Application Submitted</h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted">
-        Your credentials are now in the hands of our maritime certification
-        experts. We&apos;re confirming your documents to ensure the highest
-        standard of safety and expertise for our community.
+      <h2 className="mt-4 text-2xl font-bold text-ink">
+        You&apos;re submitted!
+      </h2>
+      <p className="mt-3 text-sm leading-relaxed text-muted">
+        We&apos;ll review your licence and notify you via SMS within 24-48
+        hours.
       </p>
-      <div className="mt-5 rounded-2xl bg-navy p-5 text-left text-white">
-        <span className="inline-block rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-accent">
-          Verification in Progress
-        </span>
-        <p className="mt-3 flex items-center gap-2 text-xs text-white/70">
-          <Clock size={14} /> Estimated time to review
-        </p>
-        <p className="mt-1 text-3xl font-bold">24-48 hours</p>
-      </div>
-      <Button variant="primary" className="mt-5" onClick={onDone}>
-        Go to Dashboard <ArrowRight size={18} />
+      <Button variant="primary" className="mt-6" onClick={onDone}>
+        Done
       </Button>
     </div>
   );
@@ -506,7 +608,8 @@ function RejectedCard({ onResubmit }: { onResubmit: () => void }) {
         Not Approved!
       </h2>
       <p className="mt-2 text-center text-sm text-muted">
-        Unfortunately, your account doesn&apos;t get approved due to below reason
+        Unfortunately, your account doesn&apos;t get approved due to below
+        reason
       </p>
 
       <h3 className="mt-6 text-lg font-bold text-ink">License Verification</h3>

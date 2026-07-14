@@ -143,7 +143,12 @@ export default function GuideProfilePage() {
 
         {/* QR card — real, scannable QR for approved guides only */}
         {guide && status === "approved" ? (
-          <GuideQrCard guideId={guide.id} name={guide.full_name ?? "Guide"} />
+          <GuideQrCard
+            guideId={guide.id}
+            name={guide.full_name ?? "Guide"}
+            phone={guide.phone}
+            website={guide.website_url}
+          />
         ) : (
           <div className="mt-5 rounded-[20px] bg-card p-6 text-center">
             <h3 className="text-xl font-bold text-ink">Your Guide QR Code</h3>

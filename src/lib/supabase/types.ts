@@ -12,6 +12,8 @@ export type Guide = {
   specialties: string[];
   years_experience: number | null;
   license_url: string | null;
+  website_url: string | null;
+  reef_ambassador: boolean;
   qr_url: string | null;
   verification_status: VerificationStatus;
   rejection_reason: string | null;

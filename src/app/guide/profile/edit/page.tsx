@@ -7,7 +7,17 @@ import { AppShell } from "@/components/AppShell";
 import { clsx } from "@/lib/clsx";
 import type { Guide } from "@/lib/supabase/types";
 
-const ISLANDS = ["Grand Bahama", "Abaco", "Andros", "Eleuthera", "Exuma"];
+const ISLANDS = [
+  "Nassau (New Providence)",
+  "Grand Bahama",
+  "Abaco",
+  "Andros",
+  "Eleuthera",
+  "Exuma",
+  "Long Island",
+  "Bimini",
+  "Berry Islands",
+];
 const SPECIALTIES = [
   "Bonefish",
   "Tarpon",
@@ -26,6 +36,7 @@ export default function AccountSettingsPage() {
   const [bio, setBio] = useState("");
   const [boatType, setBoatType] = useState("");
   const [years, setYears] = useState("");
+  const [website, setWebsite] = useState("");
   const [islands, setIslands] = useState<string[]>([]);
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -41,6 +52,7 @@ export default function AccountSettingsPage() {
         setBio(guide.bio ?? "");
         setBoatType(guide.boat_type ?? "");
         setYears(guide.years_experience != null ? String(guide.years_experience) : "");
+        setWebsite(guide.website_url ?? "");
         setIslands(guide.islands ?? []);
         setSpecialties(guide.specialties ?? []);
         setAvatarUrl(guide.avatar_url);
@@ -75,6 +87,7 @@ export default function AccountSettingsPage() {
     fd.append("bio", bio);
     fd.append("boat_type", boatType);
     if (years.trim()) fd.append("years_experience", years.trim());
+    fd.append("website_url", website.trim());
     fd.append("islands", JSON.stringify(islands));
     fd.append("specialties", JSON.stringify(specialties));
     if (avatarFile) fd.append("avatar", avatarFile);
@@ -174,6 +187,18 @@ export default function AccountSettingsPage() {
             />
           </div>
         </div>
+
+        <label className="mt-5 text-sm font-semibold text-ink">
+          Personal Website{" "}
+          <span className="font-normal text-faint">(optional)</span>
+        </label>
+        <input
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          inputMode="url"
+          placeholder="www.islandbeyfly.com"
+          className="mt-2 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm text-ink outline-none placeholder:text-faint focus:border-brand"
+        />
 
         <ChipSection title="🏝️ Island Coverage">
           {ISLANDS.map((v) => (
