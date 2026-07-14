@@ -5,11 +5,22 @@ import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
 import { Download, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { prettyWebsite } from "@/lib/url";
 
 // Generates a real, scannable QR pointing at the guide's public profile
 // (/g/<id>?src=qr) and offers PNG + PDF downloads. Everything runs client-side;
 // the QR is deterministic from the URL, so nothing needs to be stored.
-export function GuideQrCard({ guideId, name }: { guideId: string; name: string }) {
+export function GuideQrCard({
+  guideId,
+  name,
+  phone,
+  website,
+}: {
+  guideId: string;
+  name: string;
+  phone?: string | null;
+  website?: string | null;
+}) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,6 +71,21 @@ export function GuideQrCard({ guideId, name }: { guideId: string; name: string }
     pdf.setFontSize(10);
     pdf.setTextColor("#006a62");
     pdf.text(url, w / 2, 532, { align: "center" });
+
+    let y = 566;
+    if (phone) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.setTextColor("#062244");
+      pdf.text(`WhatsApp: ${phone}`, w / 2, y, { align: "center" });
+      y += 20;
+    }
+    if (website) {
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(11);
+      pdf.setTextColor("#43474f");
+      pdf.text(prettyWebsite(website), w / 2, y, { align: "center" });
+    }
 
     pdf.save("beyond-the-flats-qr.pdf");
   }
