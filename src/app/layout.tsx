@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { OfflineSync } from "@/components/OfflineSync";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -57,6 +58,7 @@ export default function RootLayout({
       <body className="min-h-full font-sans antialiased">
         {children}
         <ServiceWorkerRegistration />
+        <OfflineSync />
       </body>
     </html>
   );

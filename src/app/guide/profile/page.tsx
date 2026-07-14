@@ -10,15 +10,12 @@ import {
   BadgeCheck,
   Clock,
   CircleAlert,
-  Download,
-  Share2,
   LogOut,
   User,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { BottomNav } from "@/components/BottomNav";
-import { Button } from "@/components/ui/Button";
-import { QrCode } from "@/components/ui/QrCode";
+import { GuideQrCard } from "@/components/GuideQrCard";
 import { clsx } from "@/lib/clsx";
 import type { Guide } from "@/lib/supabase/types";
 
@@ -144,27 +141,17 @@ export default function GuideProfilePage() {
           </div>
         </div>
 
-        {/* QR card */}
-        <div className="mt-5 rounded-[20px] bg-card p-6 text-center">
-          <h3 className="text-xl font-bold text-ink">Your Guide QR Code</h3>
-          <div className="mt-4 flex justify-center">
-            <div className="rounded-xl bg-white p-3">
-              <QrCode size={176} />
-            </div>
+        {/* QR card — real, scannable QR for approved guides only */}
+        {guide && status === "approved" ? (
+          <GuideQrCard guideId={guide.id} name={guide.full_name ?? "Guide"} />
+        ) : (
+          <div className="mt-5 rounded-[20px] bg-card p-6 text-center">
+            <h3 className="text-xl font-bold text-ink">Your Guide QR Code</h3>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              Your shareable QR code unlocks as soon as your profile is verified.
+            </p>
           </div>
-          <p className="mt-4 text-sm leading-relaxed text-muted">
-            Allow clients to scan this code to view your availability, rates, and
-            recent catches instantly.
-          </p>
-          <div className="mt-5 flex items-center gap-3">
-            <Button variant="primary" className="flex-1">
-              <Download size={18} /> Download PNG
-            </Button>
-            <button className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-brand text-brand">
-              <Share2 size={18} />
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Sign out */}
         <button

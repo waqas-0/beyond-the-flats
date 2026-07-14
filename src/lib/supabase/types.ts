@@ -23,10 +23,14 @@ export type Guide = {
 export type Trip = {
   id: string;
   guide_id: string;
+  title: string | null;
   client_name: string | null;
+  anglers: number;
+  permit_ref: string | null;
   start_time: string;
   end_time: string | null;
   location_note: string | null;
+  notes: string | null;
   gps_lat: number | null;
   gps_lng: number | null;
   photo_url: string | null;

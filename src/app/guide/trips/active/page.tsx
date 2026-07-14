@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -17,6 +17,15 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/Button";
 import { QrCode } from "@/components/ui/QrCode";
+import { SyncStatus } from "@/components/SyncStatus";
+import { SPECIES_LIST, type Species } from "@/lib/offline/types";
+import {
+  addPhoto,
+  endTrip,
+  loadActiveTrip,
+  setCatchCount,
+  startTrip,
+} from "@/lib/offline/actions";
 
 type Modal = null | "end" | "feedback";
 
@@ -27,11 +36,8 @@ type TripInfo = {
   location: string;
 };
 
-const SPECIES = [
-  { name: "Bonefish", start: 8 },
-  { name: "Tarpon", start: 2 },
-  { name: "Permit", start: 1 },
-];
+type ZeroCounts = Record<Species, number>;
+const ZERO: ZeroCounts = { bonefish: 0, tarpon: 0, permit: 0, other: 0 };
 
 function fmt(total: number) {
   const h = Math.floor(total / 3600);
@@ -43,6 +49,8 @@ function fmt(total: number) {
 export default function ActiveTripPage() {
   const router = useRouter();
   const [started, setStarted] = useState(false);
+  const [tripId, setTripId] = useState<string | null>(null);
+  const [startMs, setStartMs] = useState<number>(0);
   const [tripInfo, setTripInfo] = useState<TripInfo>({
     clientName: "",
     anglers: 1,
@@ -50,25 +58,103 @@ export default function ActiveTripPage() {
     location: "",
   });
   const [modal, setModal] = useState<Modal>(null);
-  const [counts, setCounts] = useState(SPECIES.map((s) => s.start));
+  const [counts, setCounts] = useState<ZeroCounts>(ZERO);
   const [elapsed, setElapsed] = useState(0);
   const [rating, setRating] = useState(0);
   const [endTitle, setEndTitle] = useState("");
   const [endNotes, setEndNotes] = useState("");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const urlsRef = useRef<string[]>([]);
 
+  // Resume an in-progress trip after a reload / app re-open.
   useEffect(() => {
-    if (!started) return;
-    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => clearInterval(t);
-  }, [started]);
+    let active = true;
+    loadActiveTrip().then((bundle) => {
+      if (!active || !bundle) return;
+      const { trip, catches, photos } = bundle;
+      setTripId(trip.id);
+      setStartMs(Date.parse(trip.start_time));
+      setTripInfo({
+        clientName: trip.client_name ?? "",
+        anglers: trip.anglers,
+        permitRef: trip.permit_ref ?? "",
+        location: trip.location_note ?? "",
+      });
+      const restored = { ...ZERO };
+      for (const c of catches) restored[c.species] = c.count;
+      setCounts(restored);
+      const urls = photos.map((p) => URL.createObjectURL(p.blob));
+      urlsRef.current = urls;
+      setPhotoUrls(urls);
+      setStarted(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const bump = (i: number, d: number) =>
-    setCounts((c) => c.map((n, idx) => (idx === i ? Math.max(0, n + d) : n)));
+  // Tick the elapsed clock once a second while a trip is running. Date.now()
+  // lives inside the interval (an effect), never in render.
+  useEffect(() => {
+    if (!started || !startMs) return;
+    const update = () =>
+      setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [started, startMs]);
+
+  // Revoke object URLs on unmount to avoid leaks.
+  useEffect(() => {
+    return () => {
+      for (const u of urlsRef.current) URL.revokeObjectURL(u);
+    };
+  }, []);
 
   const canStart =
     tripInfo.clientName.trim() !== "" &&
     tripInfo.permitRef.trim() !== "" &&
     tripInfo.location.trim() !== "";
+
+  async function handleStart() {
+    if (!canStart || saving) return;
+    setSaving(true);
+    const trip = await startTrip(tripInfo);
+    setTripId(trip.id);
+    setStartMs(Date.parse(trip.start_time));
+    setCounts(ZERO);
+    setStarted(true);
+    setSaving(false);
+  }
+
+  function bump(species: Species, d: number) {
+    if (!tripId) return;
+    setCounts((c) => {
+      const next = Math.max(0, c[species] + d);
+      void setCatchCount(tripId, species, next);
+      return { ...c, [species]: next };
+    });
+  }
+
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file || !tripId) return;
+    await addPhoto(tripId, file);
+    const url = URL.createObjectURL(file);
+    urlsRef.current = [...urlsRef.current, url];
+    setPhotoUrls((u) => [...u, url]);
+  }
+
+  async function handleEnd() {
+    if (!tripId || saving) return;
+    setSaving(true);
+    await endTrip(tripId, { title: endTitle, notes: endNotes });
+    setSaving(false);
+    setModal("feedback");
+  }
 
   if (!started) {
     return (
@@ -78,10 +164,11 @@ export default function ActiveTripPage() {
             <button onClick={() => router.back()} className="text-ink">
               <ArrowLeft size={26} />
             </button>
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold text-ink">Start Trip</h1>
               <p className="text-base text-muted">Enter trip details before departure.</p>
             </div>
+            <SyncStatus />
           </header>
 
           <div className="mt-8 space-y-4">
@@ -179,12 +266,8 @@ export default function ActiveTripPage() {
           </div>
 
           <div className="mt-auto pt-10">
-            <Button
-              variant="primary"
-              disabled={!canStart}
-              onClick={() => setStarted(true)}
-            >
-              Start Tracking Trip
+            <Button variant="primary" disabled={!canStart || saving} onClick={handleStart}>
+              {saving ? "Starting…" : "Start Tracking Trip"}
             </Button>
           </div>
         </div>
@@ -199,13 +282,14 @@ export default function ActiveTripPage() {
           <button onClick={() => router.back()} className="text-ink">
             <ArrowLeft size={26} />
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-ink">Active Trip</h1>
             <p className="text-base text-muted">
-              {tripInfo.clientName} · {tripInfo.anglers}{" "}
+              {tripInfo.clientName || "Trip"} · {tripInfo.anglers}{" "}
               {tripInfo.anglers === 1 ? "angler" : "anglers"}
             </p>
           </div>
+          <SyncStatus />
         </header>
 
         {/* Active tracking */}
@@ -224,25 +308,27 @@ export default function ActiveTripPage() {
         <h2 className="mt-8 text-[28px] font-bold text-ink">Catch Log</h2>
 
         <div className="mt-4 space-y-4">
-          {SPECIES.map((sp, i) => (
+          {SPECIES_LIST.map((sp) => (
             <div
-              key={sp.name}
+              key={sp.key}
               className="flex items-center justify-between rounded-2xl border border-line bg-bg px-5 py-4"
             >
-              <span className="text-xl text-ink">{sp.name}</span>
+              <span className="text-xl text-ink">{sp.label}</span>
               <div className="flex items-center gap-5">
                 <button
-                  onClick={() => bump(i, -1)}
+                  onClick={() => bump(sp.key, -1)}
                   className="flex h-12 w-12 items-center justify-center rounded-full bg-faint/70 text-ink"
+                  aria-label={`Decrease ${sp.label}`}
                 >
                   <Minus size={22} />
                 </button>
                 <span className="w-7 text-center text-2xl tabular-nums text-ink">
-                  {String(counts[i]).padStart(2, "0")}
+                  {String(counts[sp.key]).padStart(2, "0")}
                 </span>
                 <button
-                  onClick={() => bump(i, 1)}
+                  onClick={() => bump(sp.key, 1)}
                   className="flex h-12 w-12 items-center justify-center rounded-full border border-brand/40 bg-brand-soft text-brand"
+                  aria-label={`Increase ${sp.label}`}
                 >
                   <Plus size={22} />
                 </button>
@@ -251,9 +337,39 @@ export default function ActiveTripPage() {
           ))}
         </div>
 
-        <button className="mt-6 flex items-center justify-center gap-2 rounded-2xl bg-card py-5 text-lg font-medium text-brand">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={onPickPhoto}
+          className="hidden"
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="mt-6 flex items-center justify-center gap-2 rounded-2xl bg-card py-5 text-lg font-medium text-brand"
+        >
           <Camera size={22} /> Add Photo
+          {photoUrls.length > 0 && (
+            <span className="rounded-full bg-brand px-2 py-0.5 text-sm text-white">
+              {photoUrls.length}
+            </span>
+          )}
         </button>
+
+        {photoUrls.length > 0 && (
+          <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto">
+            {photoUrls.map((u) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={u}
+                src={u}
+                alt="Catch"
+                className="h-16 w-16 shrink-0 rounded-xl object-cover"
+              />
+            ))}
+          </div>
+        )}
 
         <div className="mt-auto pt-10">
           <Button variant="danger" onClick={() => setModal("end")}>
@@ -283,26 +399,22 @@ export default function ActiveTripPage() {
               rows={3}
               className="w-full resize-none rounded-2xl border border-line bg-bg px-5 py-4 text-base text-ink outline-none placeholder:text-faint focus:border-brand"
             />
-            <button className="flex w-full items-center justify-center gap-2 rounded-2xl bg-card py-4 text-lg font-medium text-navy">
-              <MapPinPlus size={20} /> Confirm Location — {tripInfo.location}
-            </button>
+            <div className="flex w-full items-center justify-center gap-2 rounded-2xl bg-card py-4 text-lg font-medium text-navy">
+              <MapPinPlus size={20} /> {tripInfo.location || "Location set"}
+            </div>
           </div>
-          <Button
-            variant="primary"
-            className="mt-6"
-            onClick={() => setModal("feedback")}
-          >
-            <Flag size={18} /> Save & End Trip
+          <Button variant="primary" className="mt-6" disabled={saving} onClick={handleEnd}>
+            <Flag size={18} /> {saving ? "Saving…" : "Save & End Trip"}
           </Button>
         </Sheet>
       )}
 
       {/* Feedback / QR modal */}
       {modal === "feedback" && (
-        <Sheet onClose={() => setModal(null)}>
+        <Sheet onClose={() => router.push("/guide/trips")}>
           <h2 className="text-4xl font-bold text-ink">Request Feedback</h2>
           <p className="mt-2 text-lg text-muted">
-            Share the QR code with {tripInfo.clientName} for a quick review.
+            Share the QR code with {tripInfo.clientName || "your client"} for a quick review.
           </p>
 
           <p className="mt-6 text-center text-base font-medium uppercase tracking-wide text-ink">
@@ -329,7 +441,7 @@ export default function ActiveTripPage() {
           <Button
             variant="primary"
             className="mt-6"
-            onClick={() => router.push("/guide/dashboard")}
+            onClick={() => router.push("/guide/trips")}
           >
             Done <Send size={18} />
           </Button>
