@@ -38,9 +38,11 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Admin panel requires a session (admin_users membership is enforced in the
-  // panel layout, which can read that service-role-only table). /admin/login
-  // is the one admin route left open.
-  const isAdminArea = pathname.startsWith("/admin") && pathname !== "/admin/login";
+  // panel layout, which can read that service-role-only table). The auth pages
+  // (/admin/login, /admin/forgot-password) are the routes left open.
+  const ADMIN_PUBLIC = ["/admin/login", "/admin/forgot-password"];
+  const isAdminArea =
+    pathname.startsWith("/admin") && !ADMIN_PUBLIC.includes(pathname);
   if (isAdminArea && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
