@@ -10,7 +10,6 @@ export default async function AdminApplicationsPage() {
     .select(
       "id, full_name, avatar_url, phone, islands, specialties, verification_status, created_at",
     )
-    .eq("verification_status", "pending")
     .order("created_at", { ascending: false });
   const guides = (data ?? []) as GuideRow[];
 
@@ -18,10 +17,11 @@ export default async function AdminApplicationsPage() {
     <div>
       <h1 className="text-2xl font-bold text-ink">Guide Applications</h1>
       <p className="mt-1 text-sm text-muted">
-        Review the pending requests for guide accounts.
+        Review and manage guide account requests. Filter by status to find
+        pending applications that need a decision.
       </p>
       <div className="mt-6">
-        <GuideTable guides={guides} />
+        <GuideTable guides={guides} showStatusFilter />
       </div>
     </div>
   );

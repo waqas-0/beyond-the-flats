@@ -9,7 +9,6 @@ import {
   ClipboardList,
   QrCode,
   Upload,
-  Star,
   LogOut,
   Menu,
   X,
@@ -24,7 +23,6 @@ const NAV = [
   { href: "/admin/applications", label: "Guide Applications", icon: ClipboardList },
   { href: "/admin/qr", label: "QR Management", icon: QrCode },
   { href: "/admin/export", label: "Export Data", icon: Upload },
-  { href: "/admin/reviews", label: "Reviews", icon: Star },
 ];
 
 export function AdminShell({
