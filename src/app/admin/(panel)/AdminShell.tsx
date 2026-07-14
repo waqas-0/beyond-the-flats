@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ClipboardList,
+  QrCode,
   LogOut,
   Menu,
   X,
@@ -14,10 +15,10 @@ import {
 import { Logo } from "@/components/Logo";
 import { clsx } from "@/lib/clsx";
 
-// Week 3 scope: verification only — Dashboard + Guide Applications.
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/applications", label: "Guide Applications", icon: ClipboardList },
+  { href: "/admin/qr", label: "QR Management", icon: QrCode },
 ];
 
 export function AdminShell({
@@ -31,6 +32,33 @@ export function AdminShell({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState(false);
+
+  // Keep the admin view live while connected: new guide applications and
+  // status changes show up without a manual reload. Admin pages are
+  // `force-dynamic`, so router.refresh() re-runs their DB queries server-side.
+  // We refresh on reconnect, on tab focus/visibility, and on a 30s heartbeat —
+  // but only when the tab is visible and actually online, so a hidden or
+  // offline tab never hammers the server.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        router.refresh();
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const heartbeat = setInterval(refresh, 30_000);
+    window.addEventListener("online", refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearInterval(heartbeat);
+      window.removeEventListener("online", refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [router]);
 
   async function logout() {
     await fetch("/api/auth/signout", { method: "POST" });
