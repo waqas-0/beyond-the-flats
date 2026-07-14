@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { normalizeWebsite } from "@/lib/url";
 import { NextRequest } from "next/server";
 
 // GET — return the signed-in guide's profile
@@ -50,6 +51,7 @@ export async function PATCH(request: NextRequest) {
   const yearsExperience = formData.get("years_experience")
     ? Number(formData.get("years_experience"))
     : null;
+  const website = normalizeWebsite(formData.get("website_url") as string | null);
   const avatarFile = formData.get("avatar") as File | null;
 
   if (!fullName || !fullName.trim()) {
@@ -65,6 +67,7 @@ export async function PATCH(request: NextRequest) {
     specialties,
     boat_type: boatType,
     years_experience: yearsExperience,
+    website_url: website,
   };
 
   if (avatarFile && avatarFile.size > 0) {
