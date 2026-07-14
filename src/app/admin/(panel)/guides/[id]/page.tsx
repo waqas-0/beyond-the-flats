@@ -12,6 +12,7 @@ import {
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Guide } from "@/lib/supabase/types";
 import { ReviewActions } from "../../ReviewActions";
+import { GuideQrCard } from "@/components/GuideQrCard";
 import { StatusPill, Chip } from "../../ui";
 
 export const dynamic = "force-dynamic";
@@ -211,6 +212,14 @@ export default async function AdminGuideDetailPage({
             <p className="mt-2 rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
               Reason: {g.rejection_reason}
             </p>
+          )}
+          {g.verification_status === "approved" && (
+            <div className="mt-4">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">
+                QR management
+              </p>
+              <GuideQrCard guideId={g.id} name={g.full_name ?? "Guide"} />
+            </div>
           )}
         </div>
       )}

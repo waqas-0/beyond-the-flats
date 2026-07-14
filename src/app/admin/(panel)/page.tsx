@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, ClipboardList, BadgeCheck, CircleAlert } from "lucide-react";
+import { Users, ClipboardList, BadgeCheck, Sailboat, Fish, QrCode } from "lucide-react";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Guide } from "@/lib/supabase/types";
 import { StatCard, StatusPill, Initials, IslandCell } from "./ui";
@@ -18,20 +18,27 @@ export default async function AdminDashboardPage() {
   const service = createServiceClient();
 
   const cnt = async (
+    table: string,
     build?: (q: ReturnType<ReturnType<typeof service.from>["select"]>) => unknown,
   ) => {
-    let q = service.from("guides").select("*", { count: "exact", head: true });
+    let q = service.from(table).select("*", { count: "exact", head: true });
     if (build) q = build(q) as typeof q;
     const { count } = await q;
     return count ?? 0;
   };
 
-  const [total, pending, approved, rejected] = await Promise.all([
-    cnt(),
-    cnt((q) => q.eq("verification_status", "pending")),
-    cnt((q) => q.eq("verification_status", "approved")),
-    cnt((q) => q.eq("verification_status", "rejected")),
+  const [total, pending, approved, trips, scans] = await Promise.all([
+    cnt("guides"),
+    cnt("guides", (q) => q.eq("verification_status", "pending")),
+    cnt("guides", (q) => q.eq("verification_status", "approved")),
+    cnt("trips"),
+    cnt("qr_scans"),
   ]);
+  const { data: catchRows } = await service.from("catches").select("count");
+  const fish = ((catchRows ?? []) as { count: number | null }[]).reduce(
+    (s, c) => s + (c.count ?? 0),
+    0,
+  );
   const approvalRate = total ? Math.round((approved / total) * 100) : 0;
 
   const { data: recentRows } = await service
@@ -45,11 +52,11 @@ export default async function AdminDashboardPage() {
     <div>
       <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
       <p className="mt-1 text-sm text-muted">
-        Monitor guide verification requests and approvals.
+        Monitor guide activity, verification requests, and platform performance.
       </p>
 
       {/* Stat cards */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard icon={<Users size={18} />} label="Total Guides" value={total} />
         <StatCard
           icon={<ClipboardList size={18} />}
@@ -63,16 +70,26 @@ export default async function AdminDashboardPage() {
           value={approved}
           note={`${approvalRate}% Approval Rate`}
         />
-        <StatCard icon={<CircleAlert size={18} />} label="Rejected" value={rejected} />
+        <StatCard icon={<Sailboat size={18} />} label="Trips Logged" value={trips} />
+        <StatCard icon={<Fish size={18} />} label="Fish Released" value={fish} />
+        <StatCard icon={<QrCode size={18} />} label="QR Scans" value={scans} />
       </div>
 
       {/* Recent applications */}
       <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-white">
-        <div className="p-5">
-          <h2 className="text-lg font-bold text-ink">Recent Applications</h2>
-          <p className="text-sm text-muted">
-            Review and manage incoming guide registrations.
-          </p>
+        <div className="flex items-center justify-between gap-3 p-5">
+          <div>
+            <h2 className="text-lg font-bold text-ink">Recent Applications</h2>
+            <p className="text-sm text-muted">
+              Review and manage incoming guide registrations.
+            </p>
+          </div>
+          <Link
+            href="/admin/applications"
+            className="shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy/90"
+          >
+            View All
+          </Link>
         </div>
 
         <div className="overflow-x-auto">
