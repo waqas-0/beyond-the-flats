@@ -17,8 +17,15 @@ import {
   saveTrip,
 } from "./db";
 import type { LocalCatch, LocalTrip } from "./types";
+import { FEATURES } from "@/lib/features";
 
 type Status = { online: boolean; syncing: boolean; pending: number };
+
+// Gated by the Week-4 trip-logging feature flag. While it's off, the sync
+// engine makes NO /api/guide/{trips,catches} calls from any page (including
+// /admin, where OfflineSync also mounts) — which is what was returning 500
+// ("column trips.title does not exist") before the Week-4 DB migration.
+const TRIP_SYNC_ENABLED: boolean = FEATURES.tripLogging;
 
 let status: Status = { online: true, syncing: false, pending: 0 };
 const listeners = new Set<() => void>();
@@ -113,6 +120,7 @@ let inFlight: Promise<void> | null = null;
 
 /** Push all dirty records. De-duplicated: concurrent calls share one run. */
 export function syncNow(): Promise<void> {
+  if (!TRIP_SYNC_ENABLED) return Promise.resolve();
   if (inFlight) return inFlight;
   inFlight = run().finally(() => {
     inFlight = null;
@@ -149,6 +157,7 @@ async function safeCount(): Promise<number> {
 
 /** Pull server trips/catches into the local store (fresh device / cleared cache). */
 export async function hydrateFromServer(): Promise<void> {
+  if (!TRIP_SYNC_ENABLED) return;
   if (!hasIDB() || !online()) return;
   try {
     const res = await fetch("/api/guide/trips");
@@ -177,6 +186,7 @@ let inited = false;
 
 /** Wire reconnect/visibility triggers and run an initial hydrate + sync. */
 export function initSync(): void {
+  if (!TRIP_SYNC_ENABLED) return;
   if (inited || typeof window === "undefined") return;
   inited = true;
 

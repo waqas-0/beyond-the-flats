@@ -8,6 +8,7 @@ import { GuideHeader } from "@/components/GuideHeader";
 import { Stars } from "@/components/ui/Stars";
 import { createClient } from "@/lib/supabase/server";
 import type { Guide, Review } from "@/lib/supabase/types";
+import { FEATURES } from "@/lib/features";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -120,7 +121,8 @@ export default async function GuideDashboardPage() {
           </div>
         </section>
 
-        {/* Today's trips */}
+        {/* Today's trips — Week-4 trip logging (gated behind FEATURES.tripLogging) */}
+        {FEATURES.tripLogging && (
         <section className="space-y-3">
           <h2 className="text-2xl font-semibold text-ink">Today&apos;s Trips</h2>
           {todaysTrips.length ? (
@@ -158,6 +160,7 @@ export default async function GuideDashboardPage() {
             </Link>
           )}
         </section>
+        )}
 
         {/* Ratings */}
         <section className="space-y-3">
