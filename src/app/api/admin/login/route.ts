@@ -14,8 +14,16 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  if (!email || !password || typeof email !== "string" || typeof password !== "string") {
-    return Response.json({ error: "Email and password are required." }, { status: 400 });
+  if (
+    !email ||
+    !password ||
+    typeof email !== "string" ||
+    typeof password !== "string"
+  ) {
+    return Response.json(
+      { error: "Email and password are required." },
+      { status: 400 },
+    );
   }
 
   const supabase = await createClient();
@@ -25,7 +33,10 @@ export async function POST(request: NextRequest) {
   });
 
   if (error || !data.user) {
-    return Response.json({ error: "Invalid email or password." }, { status: 401 });
+    return Response.json(
+      { error: "Invalid email or password." },
+      { status: 401 },
+    );
   }
 
   // Gate on admin_users membership (service client — table is not client-readable).
@@ -33,13 +44,15 @@ export async function POST(request: NextRequest) {
   const { data: admin } = await service
     .from("admin_users")
     .select("id")
-    .eq("email", email.trim().toLowerCase())
-    .maybeSingle();
+    .eq("email", email.trim().toLowerCase());
 
   if (!admin) {
     // Authenticated, but not BTF staff — don't leave a usable session behind.
     await supabase.auth.signOut();
-    return Response.json({ error: "This account is not authorised for admin access." }, { status: 403 });
+    return Response.json(
+      { error: "This account is not authorised for admin access." },
+      { status: 403 },
+    );
   }
 
   return Response.json({ ok: true });

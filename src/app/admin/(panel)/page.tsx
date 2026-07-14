@@ -1,94 +1,129 @@
 import Link from "next/link";
-import { ChevronRight, Inbox, User } from "lucide-react";
+import { Users, ClipboardList, BadgeCheck, CircleAlert } from "lucide-react";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Guide } from "@/lib/supabase/types";
+import { StatCard, StatusPill, Initials, IslandCell } from "./ui";
 
-// Application queue — pending guide applications awaiting verification.
-// Server component: admin access is already enforced by the (panel) layout.
 export const dynamic = "force-dynamic";
 
-export default async function AdminQueuePage() {
-  const service = createServiceClient();
-  const { data: guides, error } = await service
-    .from("guides")
-    .select("*")
-    .eq("verification_status", "pending")
-    .order("created_at", { ascending: true });
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
-  const pending = (guides ?? []) as Guide[];
+export default async function AdminDashboardPage() {
+  const service = createServiceClient();
+
+  const cnt = async (
+    build?: (q: ReturnType<ReturnType<typeof service.from>["select"]>) => unknown,
+  ) => {
+    let q = service.from("guides").select("*", { count: "exact", head: true });
+    if (build) q = build(q) as typeof q;
+    const { count } = await q;
+    return count ?? 0;
+  };
+
+  const [total, pending, approved, rejected] = await Promise.all([
+    cnt(),
+    cnt((q) => q.eq("verification_status", "pending")),
+    cnt((q) => q.eq("verification_status", "approved")),
+    cnt((q) => q.eq("verification_status", "rejected")),
+  ]);
+  const approvalRate = total ? Math.round((approved / total) * 100) : 0;
+
+  const { data: recentRows } = await service
+    .from("guides")
+    .select("id, full_name, avatar_url, islands, verification_status, created_at")
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const recent = (recentRows ?? []) as Guide[];
 
   return (
     <div>
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-bold text-ink">Applications</h1>
-        <span className="text-sm font-semibold text-muted">
-          {pending.length} pending
-        </span>
-      </div>
+      <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
       <p className="mt-1 text-sm text-muted">
-        Review licences and approve or reject guide applications.
+        Monitor guide verification requests and approvals.
       </p>
 
-      {error && (
-        <p className="mt-6 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">
-          Failed to load applications: {error.message}
-        </p>
-      )}
+      {/* Stat cards */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={<Users size={18} />} label="Total Guides" value={total} />
+        <StatCard
+          icon={<ClipboardList size={18} />}
+          label="Pending Applications"
+          value={pending}
+          note={pending ? "Immediate Action" : undefined}
+        />
+        <StatCard
+          icon={<BadgeCheck size={18} />}
+          label="Approved Guides"
+          value={approved}
+          note={`${approvalRate}% Approval Rate`}
+        />
+        <StatCard icon={<CircleAlert size={18} />} label="Rejected" value={rejected} />
+      </div>
 
-      {!error && pending.length === 0 && (
-        <div className="mt-10 flex flex-col items-center rounded-[20px] bg-white py-14 text-center">
-          <Inbox size={40} className="text-faint" strokeWidth={1.6} />
-          <p className="mt-3 text-base font-semibold text-ink">All caught up</p>
-          <p className="mt-1 text-sm text-muted">
-            No pending applications to review.
+      {/* Recent applications */}
+      <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-white">
+        <div className="p-5">
+          <h2 className="text-lg font-bold text-ink">Recent Applications</h2>
+          <p className="text-sm text-muted">
+            Review and manage incoming guide registrations.
           </p>
         </div>
-      )}
 
-      <div className="mt-5 space-y-3">
-        {pending.map((g) => (
-          <Link
-            key={g.id}
-            href={`/admin/guides/${g.id}`}
-            className="flex items-center gap-4 rounded-[20px] bg-white p-4 transition-colors hover:bg-card"
-          >
-            {g.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={g.avatar_url}
-                alt={g.full_name ?? "Guide"}
-                className="h-14 w-14 shrink-0 rounded-full object-cover"
-                width={56}
-                height={56}
-              />
-            ) : (
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-card">
-                <User size={26} className="text-muted" strokeWidth={1.6} />
-              </div>
-            )}
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-semibold text-ink">
-                {g.full_name ?? "Unnamed guide"}
-              </p>
-              <p className="truncate text-sm text-muted">{g.phone}</p>
-              {!!g.islands.length && (
-                <p className="mt-0.5 truncate text-xs text-muted">
-                  🏝️ {g.islands.join(", ")}
-                </p>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="border-y border-line bg-bg text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                <th className="px-5 py-3">Guide Name</th>
+                <th className="px-5 py-3">Island</th>
+                <th className="px-5 py-3">Submission Date</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((g) => (
+                <tr key={g.id} className="border-b border-line last:border-0">
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <Initials name={g.full_name} url={g.avatar_url} size={36} />
+                      <span className="font-semibold text-ink">
+                        {g.full_name ?? "Unnamed guide"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <IslandCell islands={g.islands} />
+                  </td>
+                  <td className="px-5 py-4 text-muted">{fmtDate(g.created_at)}</td>
+                  <td className="px-5 py-4">
+                    <StatusPill status={g.verification_status} />
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <Link
+                      href={`/admin/guides/${g.id}`}
+                      className="text-sm font-semibold text-navy hover:underline"
+                    >
+                      {g.verification_status === "pending" ? "Review" : "View Details"}
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+              {recent.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-12 text-center text-muted">
+                    No applications yet.
+                  </td>
+                </tr>
               )}
-            </div>
-
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              <span className="rounded-full bg-navy/10 px-2.5 py-0.5 text-xs font-semibold text-navy">
-                {g.license_url ? "Licence ✓" : "No licence"}
-              </span>
-              <span className="flex items-center text-xs text-muted">
-                Review <ChevronRight size={14} />
-              </span>
-            </div>
-          </Link>
-        ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
