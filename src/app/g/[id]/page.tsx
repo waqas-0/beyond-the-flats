@@ -19,6 +19,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/Button";
 import { Stars } from "@/components/ui/Stars";
 import { ScanLogger } from "@/components/ScanLogger";
+import { ReviewForm } from "@/components/ReviewForm";
 import { createClient } from "@/lib/supabase/server";
 import type { Catch, Guide, Review, Trip } from "@/lib/supabase/types";
 
@@ -261,6 +262,11 @@ export default async function PublicGuideProfilePage({
             </div>
           </section>
         )}
+
+        {/* Leave a review */}
+        <section className="px-5 pt-8">
+          <ReviewForm guideId={guide.id} />
+        </section>
 
         {/* CTA */}
         <section className="px-5 pt-7">
