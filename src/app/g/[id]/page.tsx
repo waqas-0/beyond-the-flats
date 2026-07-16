@@ -32,6 +32,11 @@ const SPECIES_LABEL: Record<string, string> = {
   other: "Other",
 };
 
+// Official Go Outdoors Bahamas licensing portal — visitors buy their fishing
+// permit here (day/weekly, pay by card), then send the receipt number to the guide.
+const PERMIT_URL =
+  "https://license.gooutdoorsbahamas.com/Licensing/CustomerLookup.aspx";
+
 function fmtDate(iso: string) {
   return new Date(iso)
     .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -295,22 +300,30 @@ export default async function PublicGuideProfilePage({
 
         {/* Permit prompt + browse other guides */}
         <section className="space-y-5 px-5 pb-8 pt-5">
-          <div className="flex items-start gap-3 rounded-2xl border border-line bg-card p-4">
-            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
-              <Ticket size={18} />
-            </span>
-            <div>
-              <p className="text-sm text-ink">
-                Visiting anglers need a fishing permit before getting on the
-                water.
-              </p>
-              <Link
-                href="/permits"
-                className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-brand"
-              >
-                Get yours here <ChevronRight size={15} />
-              </Link>
+          <div className="rounded-2xl border border-line bg-card p-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
+                <Ticket size={18} />
+              </span>
+              <div>
+                <p className="text-sm text-ink">
+                  New to fishing the Bahamas flats? Get your permit before you
+                  hit the water — quick and easy online.
+                </p>
+                <a
+                  href={PERMIT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand"
+                >
+                  Get your fishing permit <ExternalLink size={14} />
+                </a>
+              </div>
             </div>
+            <p className="mt-3 border-t border-line pt-3 text-xs leading-relaxed text-muted">
+              Got your permit? Great — send your receipt number to your guide on
+              WhatsApp before your trip so they can confirm you&apos;re good to go.
+            </p>
           </div>
 
           {browseIsland && (
