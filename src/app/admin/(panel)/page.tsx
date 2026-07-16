@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Users, ClipboardList, BadgeCheck, Sailboat, Fish, QrCode } from "lucide-react";
 import { createServiceClient } from "@/lib/supabase/server";
+import { FEATURES } from "@/lib/features";
 import type { Guide } from "@/lib/supabase/types";
 import { StatCard, StatusPill, Initials, IslandCell } from "./ui";
 
@@ -70,8 +71,12 @@ export default async function AdminDashboardPage() {
           value={approved}
           note={`${approvalRate}% Approval Rate`}
         />
-        <StatCard icon={<Sailboat size={18} />} label="Trips Logged" value={trips} />
-        <StatCard icon={<Fish size={18} />} label="Fish Released" value={fish} />
+        {FEATURES.tripLogging && (
+          <StatCard icon={<Sailboat size={18} />} label="Trips Logged" value={trips} />
+        )}
+        {FEATURES.tripLogging && (
+          <StatCard icon={<Fish size={18} />} label="Fish Released" value={fish} />
+        )}
         <StatCard icon={<QrCode size={18} />} label="QR Scans" value={scans} />
       </div>
 
