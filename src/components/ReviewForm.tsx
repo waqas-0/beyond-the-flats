@@ -41,7 +41,7 @@ export function ReviewForm({ guideId }: { guideId: string }) {
         <BadgeCheck size={28} className="mx-auto text-brand" />
         <p className="mt-2 text-sm font-semibold text-ink">Thanks for your review!</p>
         <p className="mt-1 text-xs text-muted">
-          It will appear once our team approves it.
+          It&apos;s now live on this guide&apos;s profile.
         </p>
       </div>
     );

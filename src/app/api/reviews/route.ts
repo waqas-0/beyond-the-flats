@@ -3,7 +3,8 @@ import { NextRequest } from "next/server";
 
 // POST — a visitor leaves a review on a guide's public profile. Anon can't
 // insert into `reviews` (RLS/grants), so this validates and inserts via the
-// service client with approved=false (pending admin moderation).
+// service client. Reviews auto-publish (approved=true) — there is no admin
+// moderation screen in the design; only approved guides can be reviewed.
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
   try {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     visitor_name: visitorName.trim().slice(0, 80),
     stars: Math.round(stars),
     body: typeof text === "string" && text.trim() ? text.trim().slice(0, 1000) : null,
-    approved: false,
+    approved: true,
   });
 
   if (error) {

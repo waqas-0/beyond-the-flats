@@ -3,8 +3,9 @@ import { getAdminSession } from "@/lib/admin";
 import { notifyGuide } from "@/lib/notify";
 import { NextRequest } from "next/server";
 
-// PATCH /api/admin/guides/[id] — approve or reject a guide application.
-// Body: { action: "approve" | "reject", reason?: string }
+// PATCH /api/admin/guides/[id] — approve/reject a guide, or toggle their
+// Reef Ambassador certification.
+// Body: { action: "approve" | "reject" | "reef", reason?: string, value?: boolean }
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -16,7 +17,7 @@ export async function PATCH(
 
   const { id } = await params;
 
-  let body: { action?: unknown; reason?: unknown };
+  let body: { action?: unknown; reason?: unknown; value?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -24,11 +25,31 @@ export async function PATCH(
   }
 
   const action = body.action;
-  if (action !== "approve" && action !== "reject") {
+  if (action !== "approve" && action !== "reject" && action !== "reef") {
     return Response.json(
-      { error: "action must be 'approve' or 'reject'." },
+      { error: "action must be 'approve', 'reject', or 'reef'." },
       { status: 400 },
     );
+  }
+
+  const service = createServiceClient();
+
+  // Toggle Reef Ambassador certification (no notification).
+  if (action === "reef") {
+    const { data: guide, error } = await service
+      .from("guides")
+      .update({ reef_ambassador: body.value === true })
+      .eq("id", id)
+      .select("id, reef_ambassador")
+      .maybeSingle();
+    if (error) {
+      console.error("[admin/guides PATCH reef]", error.message);
+      return Response.json({ error: "Failed to update certification." }, { status: 500 });
+    }
+    if (!guide) {
+      return Response.json({ error: "Guide not found." }, { status: 404 });
+    }
+    return Response.json({ guide });
   }
 
   const reason = typeof body.reason === "string" ? body.reason.trim() : "";
@@ -38,8 +59,6 @@ export async function PATCH(
       { status: 400 },
     );
   }
-
-  const service = createServiceClient();
 
   const status = action === "approve" ? "approved" : "rejected";
   const { data: guide, error } = await service
