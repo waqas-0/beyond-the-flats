@@ -98,31 +98,43 @@ export default async function GuideDashboardPage() {
         {/* Season performance */}
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold text-ink">Season Performance</h2>
-          <StatCard
-            icon={<CalendarDays size={18} className="text-navy" />}
-            iconBg="bg-navy/10"
-            value={String(completedTrips)}
-            label="Trips Completed"
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <StatCard
-              icon={<Fish size={20} className="text-brand" />}
-              iconBg="bg-brand-soft"
-              value={String(fishReleased)}
-              label="Fish Released"
-              stacked
-            />
+          {FEATURES.tripLogging ? (
+            <>
+              <StatCard
+                icon={<CalendarDays size={18} className="text-navy" />}
+                iconBg="bg-navy/10"
+                value={String(completedTrips)}
+                label="Trips Completed"
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <StatCard
+                  icon={<Fish size={20} className="text-brand" />}
+                  iconBg="bg-brand-soft"
+                  value={String(fishReleased)}
+                  label="Fish Released"
+                  stacked
+                />
+                <StatCard
+                  icon={<Star size={18} className="text-danger" fill="currentColor" />}
+                  iconBg="bg-danger-soft"
+                  value={avgRating ? avgRating.toFixed(1) : "New"}
+                  label="Client Rating"
+                  stacked
+                />
+              </div>
+            </>
+          ) : (
             <StatCard
               icon={<Star size={18} className="text-danger" fill="currentColor" />}
               iconBg="bg-danger-soft"
               value={avgRating ? avgRating.toFixed(1) : "New"}
               label="Client Rating"
-              stacked
             />
-          </div>
+          )}
         </section>
 
-        {/* Today's trips */}
+        {/* Today's trips — parked with Week-4 trip logging (FEATURES.tripLogging) */}
+        {FEATURES.tripLogging && (
         <section className="space-y-3">
           <h2 className="text-2xl font-semibold text-ink">Today&apos;s Trips</h2>
           {todaysTrips.length ? (
@@ -160,6 +172,7 @@ export default async function GuideDashboardPage() {
             </Link>
           )}
         </section>
+        )}
 
         {/* Ratings */}
         <section className="space-y-3">

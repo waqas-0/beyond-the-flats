@@ -21,6 +21,7 @@ import { Stars } from "@/components/ui/Stars";
 import { ScanLogger } from "@/components/ScanLogger";
 import { ReviewForm } from "@/components/ReviewForm";
 import { createClient } from "@/lib/supabase/server";
+import { FEATURES } from "@/lib/features";
 import type { Catch, Guide, Review, Trip } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -180,8 +181,12 @@ export default async function PublicGuideProfilePage({
         {/* Stats */}
         <div className="px-5 pt-5">
           <div className="grid grid-cols-2 gap-x-6 gap-y-5 rounded-2xl bg-navy p-5 text-white">
-            <Stat label="Trips Logged" value={String(trips.length)} />
-            <Stat label="Fish Released" value={String(fishReleased)} />
+            {FEATURES.tripLogging && (
+              <Stat label="Trips Logged" value={String(trips.length)} />
+            )}
+            {FEATURES.tripLogging && (
+              <Stat label="Fish Released" value={String(fishReleased)} />
+            )}
             <Stat
               label="Years Guiding"
               value={guide.years_experience != null ? String(guide.years_experience) : "—"}
@@ -190,8 +195,8 @@ export default async function PublicGuideProfilePage({
           </div>
         </div>
 
-        {/* Recent trips */}
-        {recent.length > 0 && (
+        {/* Recent trips — parked with Week-4 trip logging (FEATURES.tripLogging) */}
+        {FEATURES.tripLogging && recent.length > 0 && (
           <section className="px-5 pt-7">
             <h2 className="text-lg font-bold text-ink">Recent Trips</h2>
             <p className="text-xs text-muted">Real-time reports</p>
