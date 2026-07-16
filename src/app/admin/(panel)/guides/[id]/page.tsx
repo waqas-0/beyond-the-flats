@@ -12,6 +12,7 @@ import {
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Guide } from "@/lib/supabase/types";
 import { ReviewActions } from "../../ReviewActions";
+import { ReefToggle } from "../../ReefToggle";
 import { GuideQrCard } from "@/components/GuideQrCard";
 import { StatusPill, Chip } from "../../ui";
 
@@ -214,12 +215,20 @@ export default async function AdminGuideDetailPage({
             </p>
           )}
           {g.verification_status === "approved" && (
-            <div className="mt-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">
-                QR management
-              </p>
-              <GuideQrCard guideId={g.id} name={g.full_name ?? "Guide"} />
-            </div>
+            <>
+              <div className="mt-4">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">
+                  Certification
+                </p>
+                <ReefToggle guideId={g.id} certified={g.reef_ambassador} />
+              </div>
+              <div className="mt-4">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">
+                  QR management
+                </p>
+                <GuideQrCard guideId={g.id} name={g.full_name ?? "Guide"} />
+              </div>
+            </>
           )}
         </div>
       )}
