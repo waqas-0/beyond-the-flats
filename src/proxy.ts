@@ -3,6 +3,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { FEATURES } from "@/lib/features";
 
 const PROTECTED = ["/guide/dashboard", "/guide/trips", "/guide/profile"];
 
@@ -36,6 +37,14 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  // Week-4 trip logging is parked (FEATURES.tripLogging) — the trip logger
+  // pages stay in the codebase but aren't reachable while it's off.
+  if (!FEATURES.tripLogging && pathname.startsWith("/guide/trips")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/guide/dashboard";
+    return NextResponse.redirect(url);
+  }
 
   // Admin panel requires a session (admin_users membership is enforced in the
   // panel layout, which can read that service-role-only table). The auth pages
