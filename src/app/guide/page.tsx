@@ -15,6 +15,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/Button";
 import { Stars } from "@/components/ui/Stars";
 import { guide } from "@/lib/data";
+import { FEATURES } from "@/lib/features";
 
 export const metadata: Metadata = { title: guide.name };
 
@@ -68,14 +69,19 @@ export default function VisitorGuideProfilePage() {
         {/* Stats */}
         <div className="px-5 pt-5">
           <div className="grid grid-cols-2 gap-x-6 gap-y-5 rounded-2xl bg-navy p-5 text-white">
-            <Stat label="Trips Logged" value={stats.tripsLogged} />
-            <Stat label="Fish Released" value={stats.fishReleased} />
+            {FEATURES.tripLogging && (
+              <Stat label="Trips Logged" value={stats.tripsLogged} />
+            )}
+            {FEATURES.tripLogging && (
+              <Stat label="Fish Released" value={stats.fishReleased} />
+            )}
             <Stat label="Guide Rating" value={stats.rating} />
             <Stat label="Satisfaction" value={stats.satisfaction} />
           </div>
         </div>
 
-        {/* Recent trips */}
+        {/* Recent trips — parked with Week-4 trip logging (FEATURES.tripLogging) */}
+        {FEATURES.tripLogging && (
         <section className="pt-7">
           <div className="flex items-end justify-between px-5">
             <div>
@@ -125,6 +131,7 @@ export default function VisitorGuideProfilePage() {
             ))}
           </div>
         </section>
+        )}
 
         {/* Guide rating */}
         <section className="px-5 pt-8">
