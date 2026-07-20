@@ -16,6 +16,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { BottomNav } from "@/components/BottomNav";
 import { GuideQrCard } from "@/components/GuideQrCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { clsx } from "@/lib/clsx";
 import type { Guide } from "@/lib/supabase/types";
 
@@ -64,7 +65,9 @@ export default function GuideProfilePage() {
         {/* Identity */}
         <div className="mt-3 flex flex-col items-center">
           <div className="relative">
-            {guide?.avatar_url ? (
+            {loading ? (
+              <Skeleton className="h-22 w-22 rounded-full" />
+            ) : guide?.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={guide.avatar_url}
@@ -78,12 +81,21 @@ export default function GuideProfilePage() {
                 <User size={40} className="text-muted" strokeWidth={1.6} />
               </div>
             )}
-            <StatusPill status={status} />
+            {!loading && <StatusPill status={status} />}
           </div>
-          <h2 className="mt-3 text-2xl font-bold text-ink">
-            {loading ? "…" : guide?.full_name ?? "Your Profile"}
-          </h2>
-          <p className="text-sm text-muted">{guide?.phone ?? ""}</p>
+          {loading ? (
+            <>
+              <Skeleton className="mt-3 h-7 w-40" />
+              <Skeleton className="mt-2 h-4 w-28" />
+            </>
+          ) : (
+            <>
+              <h2 className="mt-3 text-2xl font-bold text-ink">
+                {guide?.full_name ?? "Your Profile"}
+              </h2>
+              <p className="text-sm text-muted">{guide?.phone ?? ""}</p>
+            </>
+          )}
         </div>
 
         {/* About — saved bio / coverage / specialties */}
