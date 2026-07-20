@@ -40,11 +40,14 @@ export async function POST(request: NextRequest) {
   }
 
   // Gate on admin_users membership (service client — table is not client-readable).
+  // .maybeSingle() is required: without it a no-match returns `[]`, which is
+  // truthy, so the `if (!admin)` check below would never fire.
   const service = createServiceClient();
   const { data: admin } = await service
     .from("admin_users")
     .select("id")
-    .eq("email", email.trim().toLowerCase());
+    .eq("email", email.trim().toLowerCase())
+    .maybeSingle();
 
   if (!admin) {
     // Authenticated, but not BTF staff — don't leave a usable session behind.
