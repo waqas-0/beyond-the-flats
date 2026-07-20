@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Pencil, Check, User } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { clsx } from "@/lib/clsx";
 import type { Guide } from "@/lib/supabase/types";
 
@@ -117,6 +118,10 @@ export default function AccountSettingsPage() {
           </div>
         </header>
 
+        {loading ? (
+          <EditFormSkeleton />
+        ) : (
+          <>
         <div className="mt-6 flex justify-center">
           <label className="relative cursor-pointer">
             <div className="flex h-22 w-22 items-center justify-center overflow-hidden rounded-full bg-card">
@@ -235,8 +240,39 @@ export default function AccountSettingsPage() {
         >
           {saving ? "Saving…" : "Save Changes"}
         </button>
+          </>
+        )}
       </div>
     </AppShell>
+  );
+}
+
+function EditFormSkeleton() {
+  return (
+    <div>
+      <div className="mt-6 flex justify-center">
+        <Skeleton className="h-22 w-22 rounded-full" />
+      </div>
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div key={i} className="mt-6">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="mt-2 h-12 w-full rounded-xl" />
+        </div>
+      ))}
+      <div className="mt-5 flex gap-3">
+        <Skeleton className="h-16 flex-1 rounded-xl" />
+        <Skeleton className="h-16 flex-1 rounded-xl" />
+      </div>
+      <div className="mt-6">
+        <Skeleton className="h-5 w-40" />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-24 rounded-full" />
+          ))}
+        </div>
+      </div>
+      <Skeleton className="mt-8 h-14 w-full rounded-full" />
+    </div>
   );
 }
 
