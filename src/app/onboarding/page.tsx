@@ -25,7 +25,7 @@ export default function OnboardingPage() {
           <Button href="/guide/signin" variant="primary">
             Continue as Guide <ArrowRight size={18} />
           </Button>
-          <Button href="/guide" variant="secondary">
+          <Button href="/guides" variant="secondary">
             Explore as Visitor
           </Button>
 
