@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, ClipboardList, BadgeCheck, Sailboat, Fish, QrCode } from "lucide-react";
+import { Users, ClipboardList, BadgeCheck, CircleAlert, Sailboat, Fish, QrCode } from "lucide-react";
 import { createServiceClient } from "@/lib/supabase/server";
 import { FEATURES } from "@/lib/features";
 import type { Guide } from "@/lib/supabase/types";
@@ -28,10 +28,11 @@ export default async function AdminDashboardPage() {
     return count ?? 0;
   };
 
-  const [total, pending, approved, trips, scans] = await Promise.all([
+  const [total, pending, approved, rejected, trips, scans] = await Promise.all([
     cnt("guides"),
     cnt("guides", (q) => q.eq("verification_status", "pending")),
     cnt("guides", (q) => q.eq("verification_status", "approved")),
+    cnt("guides", (q) => q.eq("verification_status", "rejected")),
     cnt("trips"),
     cnt("qr_scans"),
   ]);
@@ -71,6 +72,7 @@ export default async function AdminDashboardPage() {
           value={approved}
           note={`${approvalRate}% Approval Rate`}
         />
+        <StatCard icon={<CircleAlert size={18} />} label="Rejected Guides" value={rejected} />
         {FEATURES.tripLogging && (
           <StatCard icon={<Sailboat size={18} />} label="Trips Logged" value={trips} />
         )}
