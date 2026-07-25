@@ -32,6 +32,13 @@ export default function GuideDashboardLoading() {
           <Skeleton className="h-7 w-28" />
           <Skeleton className="h-20 w-full rounded-xl" />
         </div>
+
+        {/* Recent catches */}
+        <div className="space-y-4">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-12 w-full rounded-full" />
+          <Skeleton className="aspect-4/5 w-full rounded-2xl" />
+        </div>
       </div>
 
       <BottomNav active="dashboard" />

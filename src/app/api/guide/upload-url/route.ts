@@ -20,9 +20,13 @@ const EXT_BY_TYPE: Record<string, string> = {
 const BUCKETS = {
   avatar: "guide-avatars",
   license: "guide-licenses",
+  catch_photo: "guide-catch-photos",
 } as const;
 
 type Kind = keyof typeof BUCKETS;
+// avatar/license are one-per-guide (fixed filename, upserted); catch_photo is
+// many-per-guide, so each upload gets its own generated filename.
+const MULTI_KINDS: Kind[] = ["catch_photo"];
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -37,7 +41,7 @@ export async function POST(request: NextRequest) {
     .json()
     .catch(() => ({}))) as { kind?: string; contentType?: string; size?: number };
 
-  if (kind !== "avatar" && kind !== "license") {
+  if (kind !== "avatar" && kind !== "license" && kind !== "catch_photo") {
     return Response.json({ error: "Invalid upload kind." }, { status: 400 });
   }
 
@@ -50,7 +54,10 @@ export async function POST(request: NextRequest) {
   }
 
   const bucket = BUCKETS[kind as Kind];
-  const path = `${user.id}/${kind}.${EXT_BY_TYPE[contentType]}`;
+  const filename = MULTI_KINDS.includes(kind as Kind)
+    ? crypto.randomUUID()
+    : kind;
+  const path = `${user.id}/${filename}.${EXT_BY_TYPE[contentType]}`;
 
   const storage = createServiceClient();
   const { data, error } = await storage.storage

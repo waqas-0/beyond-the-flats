@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { BottomNav } from "@/components/BottomNav";
 import { GuideHeader } from "@/components/GuideHeader";
+import { CatchPhotosManager } from "@/components/CatchPhotosManager";
 import { Stars } from "@/components/ui/Stars";
 import { createClient } from "@/lib/supabase/server";
 import type { Guide, Review } from "@/lib/supabase/types";
@@ -215,6 +216,8 @@ export default async function GuideDashboardPage() {
             </div>
           )}
         </section>
+
+        <CatchPhotosManager />
       </div>
 
       <BottomNav active="dashboard" />

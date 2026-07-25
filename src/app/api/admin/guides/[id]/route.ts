@@ -3,9 +3,9 @@ import { getAdminSession } from "@/lib/admin";
 import { notifyGuide } from "@/lib/notify";
 import { NextRequest } from "next/server";
 
-// PATCH /api/admin/guides/[id] — approve/reject a guide, or toggle their
-// Reef Ambassador certification.
-// Body: { action: "approve" | "reject" | "reef", reason?: string, value?: boolean }
+// PATCH /api/admin/guides/[id] — approve/reject a guide, toggle their Reef
+// Ambassador certification, or set their DMR licence number.
+// Body: { action: "approve" | "reject" | "reef" | "license_number", reason?: string, value?: boolean | string }
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -25,9 +25,14 @@ export async function PATCH(
   }
 
   const action = body.action;
-  if (action !== "approve" && action !== "reject" && action !== "reef") {
+  if (
+    action !== "approve" &&
+    action !== "reject" &&
+    action !== "reef" &&
+    action !== "license_number"
+  ) {
     return Response.json(
-      { error: "action must be 'approve', 'reject', or 'reef'." },
+      { error: "action must be 'approve', 'reject', 'reef', or 'license_number'." },
       { status: 400 },
     );
   }
@@ -45,6 +50,28 @@ export async function PATCH(
     if (error) {
       console.error("[admin/guides PATCH reef]", error.message);
       return Response.json({ error: "Failed to update certification." }, { status: 500 });
+    }
+    if (!guide) {
+      return Response.json({ error: "Guide not found." }, { status: 404 });
+    }
+    return Response.json({ guide });
+  }
+
+  // Set the guide's DMR licence number (transcribed by admin from the
+  // reviewed licence document — this is a verification signal, not
+  // self-reported by the guide).
+  if (action === "license_number") {
+    const licenseNumber =
+      typeof body.value === "string" ? body.value.trim().slice(0, 40) || null : null;
+    const { data: guide, error } = await service
+      .from("guides")
+      .update({ license_number: licenseNumber })
+      .eq("id", id)
+      .select("id, license_number")
+      .maybeSingle();
+    if (error) {
+      console.error("[admin/guides PATCH license_number]", error.message);
+      return Response.json({ error: "Failed to update licence number." }, { status: 500 });
     }
     if (!guide) {
       return Response.json({ error: "Guide not found." }, { status: 404 });

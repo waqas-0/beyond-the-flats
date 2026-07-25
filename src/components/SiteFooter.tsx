@@ -8,8 +8,8 @@ export function SiteFooter() {
     <footer className="border-t border-line bg-white px-7 pb-10 pt-8">
       <Logo size="sm" className="items-start" />
       <p className="mt-4 max-w-[18rem] text-xs leading-relaxed text-muted">
-        The world&apos;s premium directory for technical flats guides.
-        Connecting elite anglers with local expertise since 2012.
+        Beyond The Flats connects visiting anglers with verified, licensed
+        Bahamian fishing guides across the Bahamas.
       </p>
 
       <div className="mt-7">
@@ -40,7 +40,7 @@ export function SiteFooter() {
       </div>
 
       <p className="mt-8 border-t border-line pt-5 text-[11px] text-muted">
-        © 2026 FlatsGuide International. All rights reserved.
+        © 2026 Beyond The Flats, Nassau, Bahamas. All rights reserved.
       </p>
     </footer>
   );

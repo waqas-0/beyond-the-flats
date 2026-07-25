@@ -28,6 +28,15 @@ export default function PublicGuideLoading() {
         <Skeleton className="h-28 w-full rounded-2xl" />
       </div>
 
+      <div className="px-5 pt-7">
+        <Skeleton className="h-5 w-32" />
+        <div className="mt-4 grid grid-cols-2 gap-2.5">
+          <Skeleton className="col-span-2 aspect-4/3 rounded-2xl" />
+          <Skeleton className="aspect-square rounded-2xl" />
+          <Skeleton className="aspect-square rounded-2xl" />
+        </div>
+      </div>
+
       <div className="space-y-3 px-5 pt-7">
         <Skeleton className="h-5 w-32" />
         <Skeleton className="h-20 w-full rounded-2xl" />

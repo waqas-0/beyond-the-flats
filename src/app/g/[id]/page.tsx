@@ -68,6 +68,14 @@ export default async function PublicGuideProfilePage({
   if (!guideRow) notFound();
   const guide = guideRow as Guide;
 
+  const { data: catchPhotoRows } = await supabase
+    .from("catch_photos")
+    .select("id, photo_url, caption")
+    .eq("guide_id", id)
+    .order("created_at", { ascending: false })
+    .limit(6);
+  const catchPhotos = catchPhotoRows ?? [];
+
   const { data: tripRows } = await supabase
     .from("trips")
     .select("id, title, location_note, start_time, end_time")
@@ -148,6 +156,11 @@ export default async function PublicGuideProfilePage({
           <h1 className="text-2xl font-bold text-ink">
             {guide.full_name ?? "Beyond The Flats Guide"}
           </h1>
+          {guide.license_number && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-muted">
+              <BadgeCheck size={13} className="text-brand" /> DMR Licence: {guide.license_number}
+            </p>
+          )}
           {!!guide.specialties.length && (
             <p className="mt-1 text-sm font-medium text-brand">
               {guide.specialties.join(", ")}
@@ -194,6 +207,44 @@ export default async function PublicGuideProfilePage({
             <Stat label="Guide Rating" value={rating ?? "New"} />
           </div>
         </div>
+
+        {/* Recent catches — newest first, max 6, hidden entirely if empty.
+            The latest photo leads as a hero, the rest tile beneath it. */}
+        {catchPhotos.length > 0 && (
+          <section className="px-5 pt-7">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-lg font-bold text-ink">Recent Catches</h2>
+              <span className="text-xs text-muted">Fresh from the water</span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              {catchPhotos.map((p, i) => (
+                <figure
+                  key={p.id}
+                  className={`group relative overflow-hidden rounded-2xl bg-card ring-1 ring-black/5 ${
+                    i === 0 ? "col-span-2 aspect-4/3" : "aspect-square"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.photo_url}
+                    alt={p.caption ?? "Recent catch"}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {p.caption && (
+                    <figcaption
+                      className={`absolute inset-x-0 bottom-0 line-clamp-2 wrap-break-word bg-linear-to-t from-black/85 via-black/35 to-transparent px-3 pb-2.5 leading-snug text-white ${
+                        i === 0 ? "pt-10 text-sm" : "pt-8 text-[11px]"
+                      }`}
+                    >
+                      {p.caption}
+                    </figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Recent trips — parked with Week-4 trip logging (FEATURES.tripLogging) */}
         {FEATURES.tripLogging && recent.length > 0 && (

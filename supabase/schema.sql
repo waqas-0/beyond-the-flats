@@ -15,6 +15,7 @@ create table public.guides (
   specialties          text[]      not null default '{}',
   years_experience     int,
   license_url          text,
+  license_number       text,
   website_url          text,
   reef_ambassador      boolean     not null default false,
   qr_url               text,
@@ -30,6 +31,7 @@ create table public.guides (
 -- created before these fields existed. Safe to run repeatedly.
 alter table public.guides add column if not exists website_url     text;
 alter table public.guides add column if not exists reef_ambassador boolean not null default false;
+alter table public.guides add column if not exists license_number  text;
 
 -- ── trips ─────────────────────────────────────────────────────
 create table public.trips (
@@ -78,6 +80,17 @@ create table public.reviews (
   created_at   timestamptz not null default now()
 );
 
+-- ── catch_photos ─────────────────────────────────────────────
+-- Simple "recent catches" gallery on a guide's dashboard/profile — decoupled
+-- from the (parked) trip logger: just a photo + optional one-line caption.
+create table if not exists public.catch_photos (
+  id         uuid        primary key default gen_random_uuid(),
+  guide_id   uuid        not null references public.guides(id) on delete cascade,
+  photo_url  text        not null,
+  caption    text,
+  created_at timestamptz not null default now()
+);
+
 -- ── qr_scans ──────────────────────────────────────────────────
 -- Analytics: logged every time a guide's QR code is scanned
 create table public.qr_scans (
@@ -115,6 +128,7 @@ alter table public.guides      enable row level security;
 alter table public.trips       enable row level security;
 alter table public.catches     enable row level security;
 alter table public.reviews     enable row level security;
+alter table public.catch_photos enable row level security;
 alter table public.qr_scans    enable row level security;
 alter table public.admin_users enable row level security;
 
@@ -162,6 +176,21 @@ create policy "public_approved_catches" on public.catches
 create policy "public_approved_reviews" on public.reviews
   for select using (approved = true);
 
+-- catch_photos: guide manages their own uploads
+drop policy if exists "guides_own_catch_photos" on public.catch_photos;
+create policy "guides_own_catch_photos" on public.catch_photos
+  for all using (guide_id = auth.uid());
+
+-- catch_photos: publicly readable for approved guides
+drop policy if exists "public_approved_catch_photos" on public.catch_photos;
+create policy "public_approved_catch_photos" on public.catch_photos
+  for select using (
+    exists (
+      select 1 from public.guides
+      where id = guide_id and verification_status = 'approved'
+    )
+  );
+
 -- qr_scans: insert open (scanned by anyone), readable by guide only
 create policy "qr_scan_insert" on public.qr_scans
   for insert with check (true);
@@ -188,12 +217,21 @@ insert into storage.buckets (id, name, public)
   values ('catch-photos', 'catch-photos', false)
   on conflict do nothing;
 
+-- Public "recent catches" gallery photos — separate from the private
+-- catch-photos bucket used by the (parked) trip logger.
+insert into storage.buckets (id, name, public)
+  values ('guide-catch-photos', 'guide-catch-photos', true)
+  on conflict do nothing;
+
 -- Storage RLS (drop first so re-runs don't fail)
 drop policy if exists "avatar_upload"       on storage.objects;
 drop policy if exists "avatar_public_read"  on storage.objects;
 drop policy if exists "license_upload"      on storage.objects;
 drop policy if exists "qrcode_public_read"  on storage.objects;
 drop policy if exists "catch_photo_upload"  on storage.objects;
+drop policy if exists "guide_catch_photo_upload"      on storage.objects;
+drop policy if exists "guide_catch_photo_delete"      on storage.objects;
+drop policy if exists "guide_catch_photo_public_read" on storage.objects;
 
 create policy "avatar_upload" on storage.objects
   for insert to authenticated
@@ -213,6 +251,17 @@ create policy "catch_photo_upload" on storage.objects
   for insert to authenticated
   with check (bucket_id = 'catch-photos' and auth.uid()::text = (storage.foldername(name))[1]);
 
+create policy "guide_catch_photo_upload" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'guide-catch-photos' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "guide_catch_photo_delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'guide-catch-photos' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "guide_catch_photo_public_read" on storage.objects
+  for select using (bucket_id = 'guide-catch-photos');
+
 -- ── Role grants ───────────────────────────────────────────────
 -- Supabase does not auto-grant DML on custom tables; explicit grants required.
 grant usage on schema public to anon, authenticated;
@@ -221,13 +270,15 @@ grant select, insert, update on public.guides     to authenticated;
 grant select, insert, update on public.trips      to authenticated;
 grant select, insert, update on public.catches    to authenticated;
 grant select, insert        on public.reviews     to authenticated;
+grant select, insert, update, delete on public.catch_photos to authenticated;
 grant select, insert        on public.qr_scans    to authenticated;
 
-grant select on public.guides   to anon;
-grant select on public.trips    to anon;
-grant select on public.catches  to anon;
-grant select on public.reviews  to anon;
-grant insert on public.qr_scans to anon;
+grant select on public.guides       to anon;
+grant select on public.trips        to anon;
+grant select on public.catches      to anon;
+grant select on public.reviews      to anon;
+grant select on public.catch_photos to anon;
+grant insert on public.qr_scans     to anon;
 
 -- Service role bypasses RLS for trusted server-side work (admin panel reads,
 -- approve/reject, storage uploads). It needs table privileges EXPLICITLY in

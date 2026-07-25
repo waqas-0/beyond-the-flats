@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: "%s · Beyond The Flats",
   },
   description:
-    "The world's premium directory for technical flats guides. Connecting elite anglers with local Bahamas expertise.",
+    "Beyond The Flats connects visiting anglers with verified, licensed Bahamian fishing guides across the Bahamas.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

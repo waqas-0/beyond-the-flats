@@ -13,6 +13,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import type { Guide } from "@/lib/supabase/types";
 import { ReviewActions } from "../../ReviewActions";
 import { ReefToggle } from "../../ReefToggle";
+import { LicenseNumberField } from "../../LicenseNumberField";
 import { GuideQrCard } from "@/components/GuideQrCard";
 import { StatusPill, Chip } from "../../ui";
 
@@ -164,6 +165,10 @@ export default async function AdminGuideDetailPage({
           <h3 className="flex items-center gap-2 text-base font-bold text-ink">
             <FileText size={18} className="text-navy" /> License Verification
           </h3>
+
+          <div className="mt-4">
+            <LicenseNumberField guideId={g.id} licenseNumber={g.license_number} />
+          </div>
 
           {licenseUrl ? (
             <div className="mt-4">

@@ -12,6 +12,7 @@ export type Guide = {
   specialties: string[];
   years_experience: number | null;
   license_url: string | null;
+  license_number: string | null;
   website_url: string | null;
   reef_ambassador: boolean;
   qr_url: string | null;
@@ -55,6 +56,14 @@ export type Review = {
   stars: number;
   body: string | null;
   approved: boolean;
+  created_at: string;
+};
+
+export type CatchPhoto = {
+  id: string;
+  guide_id: string;
+  photo_url: string;
+  caption: string | null;
   created_at: string;
 };
 
