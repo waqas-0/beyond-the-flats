@@ -17,6 +17,14 @@
   --color-brand-soft: rgba(0, 106, 98, 0.1);
   --color-accent: #799dd6;
 
+  /* Wordmark gradient — sampled from the logo, deep ocean → teal → sand */
+  --color-ocean-deep: #003150;
+  --color-ocean: #00658a;
+  --color-ocean-soft: rgba(0, 101, 138, 0.1);
+  --color-aqua: #4fc1cc;
+  --color-seafoam: #83ccc7;
+  --color-sand: #dcdbc2;
+
   /* Status */
   --color-danger: #cd1f2a;
   --color-danger-soft: rgba(205, 31, 42, 0.1);
