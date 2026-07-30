@@ -1,9 +1,10 @@
 import Image from "next/image";
-import { ArrowRight, Download } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import guideAvatar from "../../../public/photos/guide-avatar.png";
 import captain from "../../../public/photos/captain-elias.png";
 
@@ -35,9 +36,7 @@ export default function OnboardingPage() {
             <span className="h-px flex-1 bg-line" />
           </div>
 
-          <Button variant="outline">
-            <Download size={18} /> Install App
-          </Button>
+          <InstallAppButton />
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-3 pb-6 text-center">

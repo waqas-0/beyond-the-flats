@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { FEATURES } from "@/lib/features";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -52,11 +53,23 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: [{ src: "/icon-192.png", sizes: "192x192" }],
       },
       {
-        name: "Log a Trip",
-        short_name: "Log Trip",
-        url: "/guide/trips/active",
+        name: "Browse Guides",
+        short_name: "Guides",
+        url: "/guides",
         icons: [{ src: "/icon-192.png", sizes: "192x192" }],
       },
+      // "Log a Trip" shortcut is parked with Week-4 trip logging — while the
+      // flag is off, /guide/trips* redirects, so the shortcut would dead-end.
+      ...(FEATURES.tripLogging
+        ? [
+            {
+              name: "Log a Trip",
+              short_name: "Log Trip",
+              url: "/guide/trips/active",
+              icons: [{ src: "/icon-192.png", sizes: "192x192" }],
+            },
+          ]
+        : []),
     ],
   };
 }

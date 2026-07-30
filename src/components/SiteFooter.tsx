@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { Logo } from "./Logo";
+import { InstallAppButton } from "./InstallAppButton";
 
-const platform = ["Join as Guide", "Install App"];
 const support = ["Help Center", "Terms of Service", "Privacy Policy", "Contact Support"];
 
 export function SiteFooter() {
@@ -17,14 +18,13 @@ export function SiteFooter() {
           Platform
         </h4>
         <div className="mt-3 flex flex-wrap gap-2">
-          {platform.map((p) => (
-            <span
-              key={p}
-              className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink"
-            >
-              {p}
-            </span>
-          ))}
+          <Link
+            href="/guide/signin"
+            className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:border-brand hover:text-brand"
+          >
+            Join as Guide
+          </Link>
+          <InstallAppButton variant="pill" />
         </div>
       </div>
 
