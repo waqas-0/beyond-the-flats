@@ -13,6 +13,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import type { Guide } from "@/lib/supabase/types";
 import { ReviewActions } from "../../ReviewActions";
 import { ReefToggle } from "../../ReefToggle";
+import { DeleteGuideButton } from "../../DeleteGuideButton";
 import { LicenseNumberField } from "../../LicenseNumberField";
 import { GuideQrCard } from "@/components/GuideQrCard";
 import { StatusPill, Chip } from "../../ui";
@@ -237,6 +238,12 @@ export default async function AdminGuideDetailPage({
           )}
         </div>
       )}
+
+      {/* Remove a guide entirely — test accounts, or one that shouldn't stay. */}
+      <DeleteGuideButton
+        guideId={g.id}
+        guideName={g.full_name ?? "This guide"}
+      />
     </div>
   );
 }

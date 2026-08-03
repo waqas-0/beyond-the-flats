@@ -3,6 +3,76 @@ import { getAdminSession } from "@/lib/admin";
 import { notifyGuide } from "@/lib/notify";
 import { NextRequest } from "next/server";
 
+// Every bucket that stores files under a `<guide-id>/` folder.
+const GUIDE_BUCKETS = [
+  "guide-avatars",
+  "guide-licenses",
+  "guide-catch-photos",
+  "catch-photos",
+];
+
+/** Remove every stored file belonging to a guide. Best-effort — a storage
+ *  hiccup must not block the account deletion itself. */
+async function purgeGuideStorage(
+  storage: ReturnType<typeof createServiceClient>,
+  guideId: string,
+) {
+  for (const bucket of GUIDE_BUCKETS) {
+    try {
+      const { data: files } = await storage.storage.from(bucket).list(guideId);
+      if (!files?.length) continue;
+      await storage.storage
+        .from(bucket)
+        .remove(files.map((f: { name: string }) => `${guideId}/${f.name}`));
+    } catch (e) {
+      console.error(`[admin/guides DELETE] storage ${bucket}:`, e);
+    }
+  }
+}
+
+// DELETE /api/admin/guides/[id] — permanently remove a guide.
+// Deleting the auth user cascades to the guide row and everything hanging off
+// it (trips, catches, reviews, qr_scans, catch_photos) via `on delete cascade`.
+// Their phone number is freed up, so they can register again later.
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const admin = await getAdminSession();
+  if (!admin) {
+    return Response.json({ error: "Unauthorised." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const service = createServiceClient();
+
+  const { data: guide } = await service
+    .from("guides")
+    .select("id, full_name")
+    .eq("id", id)
+    .maybeSingle();
+  if (!guide) {
+    return Response.json({ error: "Guide not found." }, { status: 404 });
+  }
+
+  // Files first — once the row is gone we'd have no record of what to clean.
+  await purgeGuideStorage(service, id);
+
+  const { error: authErr } = await service.auth.admin.deleteUser(id);
+  if (authErr) {
+    // No auth user (e.g. already removed) — drop the profile row directly so
+    // the admin isn't left with an undeletable record.
+    console.error("[admin/guides DELETE] auth:", authErr.message);
+    const { error: rowErr } = await service.from("guides").delete().eq("id", id);
+    if (rowErr) {
+      console.error("[admin/guides DELETE] row:", rowErr.message);
+      return Response.json({ error: "Failed to delete the guide." }, { status: 500 });
+    }
+  }
+
+  return Response.json({ ok: true });
+}
+
 // PATCH /api/admin/guides/[id] — approve/reject a guide, toggle their Reef
 // Ambassador certification, or set their DMR licence number.
 // Body: { action: "approve" | "reject" | "reef" | "license_number", reason?: string, value?: boolean | string }
