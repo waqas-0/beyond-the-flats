@@ -66,6 +66,7 @@ export default function AdminLoginPage() {
                 className="mt-1.5 w-full rounded-2xl border border-line bg-card px-5 py-3.5 text-sm text-ink outline-none focus:border-brand placeholder:text-faint"
               />
             </div>
+            {/* ///sadasd */}
             <div>
               <label className="text-sm font-semibold text-ink">Password</label>
               <input
