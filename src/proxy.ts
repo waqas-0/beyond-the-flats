@@ -7,21 +7,45 @@ import { FEATURES } from "@/lib/features";
 
 const PROTECTED = ["/guide/dashboard", "/guide/trips", "/guide/profile"];
 
-// The admin panel has its own hostname. Only its bare root needs mapping —
-// every link inside the panel is already an absolute /admin/... path, so those
-// resolve normally on this host (and so do /_next assets and /api routes).
+// The admin panel has its own hostname; the public site lives on the other one.
 const ADMIN_HOST = "admin.beyondtheflats.co";
+const PUBLIC_HOST = "portal.beyondtheflats.co";
+
+// Routes that need a session check, on any hostname.
+const isGated = (pathname: string) =>
+  pathname.startsWith("/admin") ||
+  pathname === "/guide/signin" ||
+  pathname === "/guide/otp" ||
+  PROTECTED.some((p) => pathname.startsWith(p));
 
 export async function proxy(request: NextRequest) {
   const host = request.headers.get("host")?.split(":")[0].toLowerCase();
-  const atAdminHostRoot =
-    host === ADMIN_HOST && request.nextUrl.pathname === "/";
+  const onAdminHost = host === ADMIN_HOST;
+  const { pathname: requestPath } = request.nextUrl;
 
-  // Root of the admin host serves the panel; the auth gate below bounces
-  // signed-out visitors on to /admin/login, and signed-in admins skip it.
-  const rewriteTo = atAdminHostRoot
-    ? new URL("/admin", request.nextUrl)
-    : null;
+  // The matcher is deliberately broad so admin-host traffic is always seen.
+  // Everything else on the public site skips the session lookup below.
+  if (!onAdminHost && !isGated(requestPath)) {
+    return NextResponse.next();
+  }
+
+  if (onAdminHost && !requestPath.startsWith("/admin")) {
+    // The admin hostname serves the panel and nothing else. Its root maps to
+    // the panel (the auth gate below sends signed-out visitors to the login
+    // page); any other path belongs to the public site, so hand it back.
+    if (requestPath !== "/") {
+      const publicUrl = new URL(request.nextUrl);
+      publicUrl.host = PUBLIC_HOST;
+      publicUrl.protocol = "https:";
+      publicUrl.port = "";
+      return NextResponse.redirect(publicUrl, 308);
+    }
+  }
+
+  const rewriteTo =
+    onAdminHost && requestPath === "/"
+      ? new URL("/admin", request.nextUrl)
+      : null;
 
   // Cookies are collected rather than written straight to a response, because
   // the response may end up being a rewrite, a redirect, or a plain pass-through.
@@ -102,17 +126,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    // Bare root of the admin hostname (matcher values must be literals).
-    {
-      source: "/",
-      has: [{ type: "header", key: "host", value: "admin.beyondtheflats.co" }],
-    },
-    "/guide/dashboard/:path*",
-    "/guide/trips/:path*",
-    "/guide/profile/:path*",
-    "/guide/signin",
-    "/guide/otp",
-    "/admin/:path*",
-  ],
+  // Every page request, so admin-host traffic is always seen — the proxy bails
+  // out early for public-site paths. Excludes /api, Next internals, and
+  // anything with a file extension (assets, /sw.js, /manifest.webmanifest).
+  matcher: ["/((?!api|_next|.*\\.).*)"],
 };
