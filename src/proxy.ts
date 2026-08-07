@@ -7,8 +7,34 @@ import { FEATURES } from "@/lib/features";
 
 const PROTECTED = ["/guide/dashboard", "/guide/trips", "/guide/profile"];
 
+// The admin panel has its own hostname. Only its bare root needs mapping —
+// every link inside the panel is already an absolute /admin/... path, so those
+// resolve normally on this host (and so do /_next assets and /api routes).
+const ADMIN_HOST = "admin.beyondtheflats.co";
+
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const host = request.headers.get("host")?.split(":")[0].toLowerCase();
+  const atAdminHostRoot =
+    host === ADMIN_HOST && request.nextUrl.pathname === "/";
+
+  // Root of the admin host serves the panel; the auth gate below bounces
+  // signed-out visitors on to /admin/login, and signed-in admins skip it.
+  const rewriteTo = atAdminHostRoot
+    ? new URL("/admin", request.nextUrl)
+    : null;
+
+  // Cookies are collected rather than written straight to a response, because
+  // the response may end up being a rewrite, a redirect, or a plain pass-through.
+  const freshCookies: { name: string; value: string; options?: object }[] = [];
+  const finalResponse = () => {
+    const response = rewriteTo
+      ? NextResponse.rewrite(rewriteTo, { request })
+      : NextResponse.next({ request });
+    freshCookies.forEach(({ name, value, options }) =>
+      response.cookies.set(name, value, options),
+    );
+    return response;
+  };
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,13 +45,10 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+            freshCookies.push({ name, value, options });
+          });
         },
       },
     },
@@ -36,7 +59,7 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
+  const pathname = rewriteTo ? rewriteTo.pathname : request.nextUrl.pathname;
 
   // Week-4 trip logging is parked (FEATURES.tripLogging) — the trip logger
   // pages stay in the codebase but aren't reachable while it's off.
@@ -75,11 +98,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return finalResponse();
 }
 
 export const config = {
   matcher: [
+    // Bare root of the admin hostname (matcher values must be literals).
+    {
+      source: "/",
+      has: [{ type: "header", key: "host", value: "admin.beyondtheflats.co" }],
+    },
     "/guide/dashboard/:path*",
     "/guide/trips/:path*",
     "/guide/profile/:path*",
