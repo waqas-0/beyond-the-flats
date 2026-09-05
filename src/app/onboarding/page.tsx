@@ -52,7 +52,7 @@ export default function OnboardingPage() {
               ))}
             </div>
             <span className="text-sm font-medium text-ink">
-              Trusted by 500+ Local Guides
+              Verified. Licensed. Bahamian guides
             </span>
           </div>
           <p className="max-w-[17rem] text-xs leading-relaxed text-faint">
